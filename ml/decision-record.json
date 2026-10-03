@@ -6,7 +6,7 @@
   "reason": "HELD_OUT_UTILITY_MARGIN_OR_SAFETY_GATE_NOT_MET",
   "evidenceClass": "SIMULATED",
   "evaluationSchema": "coldflow.advisory-evaluation.v1",
-  "modelArtifactHash": "1dea83aaec543c705b68329d1cbb9254068b3a102b2ffbf6d62370c8e47af399",
+  "modelArtifactHash": "82ad9b58a6479bca7a76a34aebd1391ecedfa12261a9c3d41590516d366ef07f",
   "utilityMetric": {
     "minimumUtilityMargin": 0.05,
     "noIncreaseInFalseCorrectableRisk": true,

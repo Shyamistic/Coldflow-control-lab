@@ -15,7 +15,9 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      - run: node --experimental-strip-types --test tests/hil.test.mjs tests/contracts.test.ts tests/domain.test.ts
       - run: g++ -std=c++17 -Wall -Wextra -Werror firmware/tests/safety_test.cpp -o /tmp/coldflow-safety && /tmp/coldflow-safety
+      - run: g++ -std=c++17 -Wall -Wextra -Werror firmware/tests/hal_test.cpp -o /tmp/coldflow-hal && /tmp/coldflow-hal
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -42,8 +42,11 @@ npm run lint
 npm run build
 npx playwright install chromium
 npm run test:e2e
+node --experimental-strip-types --test tests/hil.test.mjs tests/contracts.test.ts tests/domain.test.ts
 g++ -std=c++17 -Wall -Wextra -Werror firmware/tests/safety_test.cpp -o safety-test
 ./safety-test
+g++ -std=c++17 -Wall -Wextra -Werror firmware/tests/hal_test.cpp -o hal-test
+./hal-test
 pio run --project-dir firmware
 ```
 

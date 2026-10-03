@@ -1,0 +1,103 @@
+openapi: 3.1.0
+info:
+  title: ColdFlow Simulation API
+  version: 0.1.0
+  description: Simulation and explanation only. No physical actuator routes.
+paths:
+  /api/health:
+    get:
+      responses:
+        '200':
+          description: Simulation identity, hardwareConnected false, no physical gates passed.
+  /api/experiments:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentRequest'
+      responses:
+        '200':
+          description: Deterministic simulation with exact-JSON SHA256 export digest.
+        '400':
+          description: Invalid request, including unknown fields.
+        '429':
+          description: Process-local request limit reached.
+  /api/explain:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExplanationRequest'
+      responses:
+        '200':
+          description: Nonbillable deterministic interpretation with evidence boundary.
+        '400':
+          description: Invalid request.
+  /api/vertex-explain:
+    post:
+      security:
+        - OperatorToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExplanationRequest'
+      responses:
+        '200':
+          description: Optional AI interpretation, no control authority.
+        '401':
+          description: Operator bearer token required if enabled.
+        '503':
+          description: Disabled by default.
+        '502':
+          description: Vertex unavailable or timed out.
+components:
+  securitySchemes:
+    OperatorToken:
+      type: http
+      scheme: bearer
+  schemas:
+    Scenario:
+      type: string
+      enum: [partial, blocked, capacity, sensor, actuator, normal]
+    Method:
+      type: string
+      enum: [identified, fixed-normal, fixed-high, expert-rule, path-clear]
+    ExperimentRequest:
+      type: object
+      additionalProperties: false
+      required: [scenario, method]
+      properties:
+        scenario:
+          $ref: '#/components/schemas/Scenario'
+        method:
+          $ref: '#/components/schemas/Method'
+        duration:
+          type: integer
+          minimum: 1
+          maximum: 600
+          default: 600
+        seed:
+          type: integer
+          minimum: 1
+          maximum: 100000
+          default: 2026
+    ExplanationRequest:
+      type: object
+      additionalProperties: false
+      required: [scenario, method]
+      properties:
+        scenario:
+          $ref: '#/components/schemas/Scenario'
+        method:
+          $ref: '#/components/schemas/Method'
+        frame:
+          type: integer
+          minimum: 0
+          maximum: 120
+          default: 0

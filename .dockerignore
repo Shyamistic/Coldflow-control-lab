@@ -1,0 +1,10 @@
+node_modules
+dist
+.git
+.tools
+firmware
+test-results
+playwright-report
+artifacts
+.env*
+*.log

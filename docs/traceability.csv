@@ -1,0 +1,19 @@
+requirement_id,design_component,task_id,test_or_evidence_path,gate_id,status,owner
+SCOPE-OEM,separate secondary actuators only,CF01,tests/api.test.mjs,G0_SAFE_PLANT,software tested physical unverified,unassigned
+STATE-CONTEXT,orthogonal context and decision,CF02,tests/domain.test.ts,G2_ABSTENTION,simulation tested,unassigned
+LEASE-EXPIRY,local authorizer and driver expiry,CF03,firmware/tests/safety_test.cpp,G0_SAFE_PLANT,native tested hardware unverified,unassigned
+SENSOR-VALIDITY,eight identified probes freshness,CF04,firmware/src/main.cpp,G0_SAFE_PLANT,compiled no calibration or wiring,unassigned
+CONDENSATION,fail closed surface dewpoint wetness,CF05,firmware/tests/safety_test.cpp,G5_FIELD_EFFECT,policy tested adapters unimplemented,qualified reviewer required
+AUTHORITY,cloned pulse response estimator,CF06,tests/domain.test.ts,G1_AUTHORITY,synthetic not physical evidence,unassigned
+ABSTENTION,blocked source and fault cases,CF07,tests/domain.test.ts,G2_ABSTENTION,synthetic no restack diagnosis,unassigned
+BASELINES,five matched synthetic methods,CF08,tests/domain.test.ts,G3_TABLETOP_EFFECT,simulation only confirmatory protocol pending,independent witness required
+UI,desktop mobile and labeled media,CF09,tests/browser/dashboard.spec.mjs,competition package,browser tested,unassigned
+RECORDS,CSV JSON SHA256 and serial schema,CF10,tests/api.test.mjs,G1_AUTHORITY,simulation export serial producer no immutable physical recorder,unassigned
+HARDWIRED,independent hazardous energy removal,CF11,docs/firmware.md,G0_SAFE_PLANT,physical required not implemented by software,human safety owner
+TIMING,safety 50ms IO 10ms nominal tasks,CF12,firmware/src/main.cpp,G0_SAFE_PLANT,compiled worst-case timing unmeasured,qualified reviewer
+CUSTOMER,operator pain cheap fix and payer,CF13,docs/model-validation.md,G4_CUSTOMER,not supplied,human team
+FIELD,monitor only then qualified control,CF14,docs/firmware.md,G5_FIELD_EFFECT,not authorized or implemented,qualified technician
+TRANSFER,sealed configuration families second room,CF15,docs/model-validation.md,G6_REPEATABILITY,no physical validation,independent custodian
+SECURITY,OIDC tenancy RBAC RLS audit,CF16,docs/protocols.md,post G3 production,deliberately deferred public synthetic service only,unassigned
+REMOTE,signed leases MQTT OTA PLC adapters,CF17,docs/protocols.md,post physical gates,contract drafts only unimplemented,unassigned
+AI,explanation isolated from control,CF18,tests/api.test.mjs,competition package,optional Vertex disabled public route deterministic,unassigned

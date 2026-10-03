@@ -1,0 +1,36 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: coldflow-simulation
+  labels:
+    app.kubernetes.io/name: coldflow
+    coldflow/evidence-class: simulation
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/ingress: all
+    spec:
+      containerConcurrency: 40
+      containers:
+        - image: REGION-docker.pkg.dev/PROJECT_ID/REPOSITORY/coldflow-simulation:IMAGE_DIGEST
+          ports:
+            - containerPort: 8080
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: ENABLE_VERTEX
+              value: "false"
+          readinessProbe:
+            httpGet:
+              path: /api/ready
+              port: 8080
+          livenessProbe:
+            httpGet:
+              path: /api/live
+              port: 8080
+      serviceAccountName: coldflow-simulation-runtime
+  traffic:
+    - percent: 100
+      latestRevision: true
+# Replace placeholders during a reviewed deployment; never commit credentials.

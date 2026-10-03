@@ -8,3 +8,6 @@ playwright-report
 artifacts
 .env*
 *.log
+.agents
+.gitignore
+README.md

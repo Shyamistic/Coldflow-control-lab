@@ -13,6 +13,7 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
+      - run: npm sbom --sbom-format=cyclonedx > artifacts-sbom.json
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - run: node --experimental-strip-types --test tests/hil.test.mjs tests/contracts.test.ts tests/domain.test.ts

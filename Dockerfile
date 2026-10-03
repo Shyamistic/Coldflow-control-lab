@@ -8,10 +8,10 @@ FROM node:24-alpine
 ENV NODE_ENV=production PORT=8080 ENABLE_VERTEX=false
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 COPY --from=build /app/dist ./dist
 COPY server ./server
-COPY src/domain.ts ./src/domain.ts
+COPY src ./src
 USER node
 EXPOSE 8080
 CMD ["node", "--experimental-strip-types", "server/index.mjs"]

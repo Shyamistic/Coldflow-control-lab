@@ -23,4 +23,8 @@ Every record should identify its schema version, boot/session identity, monotoni
 - **G5 — field effect:** monitor-only deployment followed by separately qualified control, with site evidence.
 - **G6 — repeatability/transfer:** sealed configuration-family holdouts and an independent second-room or equivalent transfer test.
 
-No current repository artifact passes a physical gate. The simulator’s `RESTACK_REQUIRED` state is reserved for a future qualified workflow; the current blocked-path behavior remains abstention/inspection and does not diagnose restacking. Model or AI output is advisory only and never grants actuator authority.
+No current repository artifact passes a physical gate. `RESTACK_REQUIRED` is reserved for a matched synthetic intervention protocol that records bounded failure and path-clear improvement; it is never a physical diagnosis in this repository. The current evidence remains simulation/replay only and cannot establish a real restack, actuator authority or field outcome. Model or AI output is advisory only and never grants actuator authority.
+
+## Canonical public API provenance
+
+`POST /api/experiments` is the canonical public experiment route. Its response keeps top-level `evidenceClass: SIMULATION` for compatibility and includes `provenance` with `evidenceClass: SIMULATED`, `executionClass: SIMULATED`, `executionPath: VERSIONED_PLANT_VIRTUAL_DEVICE`, `simulatorVersion`, `configurationFamily`, `manifestHash`, `configurationHash`, `outputHash`, `replayHash`, `hardwareConnected: false`, and `directActuatorWrite: false`. `GET /api/live`, `/api/ready`, `/api/health`, and `/api/metrics` are operational routes, not evidence of physical readiness. Unknown API routes return 404 and no physical actuator interface exists.

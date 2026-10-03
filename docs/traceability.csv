@@ -4,25 +4,31 @@ STATE-CONTEXT,orthogonal context and decision,CF02,tests/domain.test.ts,G2_ABSTE
 LEASE-EXPIRY,local authorizer and driver expiry,CF03,firmware/tests/safety_test.cpp,G0_SAFE_PLANT,native tested hardware unverified,unassigned
 SENSOR-VALIDITY,eight identified probes freshness,CF04,firmware/src/main.cpp,G0_SAFE_PLANT,compiled no calibration or wiring,unassigned
 CONDENSATION,fail closed surface dewpoint wetness,CF05,firmware/tests/safety_test.cpp,G5_FIELD_EFFECT,policy tested adapters unimplemented,qualified reviewer required
-AUTHORITY,cloned pulse response estimator,CF06,tests/domain.test.ts,G1_AUTHORITY,synthetic not physical evidence,unassigned
-ABSTENTION,blocked source and fault cases,CF07,tests/domain.test.ts,G2_ABSTENTION,synthetic no restack diagnosis,unassigned
-BASELINES,five matched synthetic methods,CF08,tests/domain.test.ts,G3_TABLETOP_EFFECT,simulation only confirmatory protocol pending,independent witness required
+AUTHORITY,canonical versioned plant virtual-device pulse evidence,CF06,tests/control-validation.test.mjs,G1_AUTHORITY,deterministic synthetic validation only,unassigned
+ABSTENTION,blocked source and fault cases,CF07,tests/evaluation.test.mjs,G2_ABSTENTION,synthetic no physical diagnosis,unassigned
+BASELINES,grouped no-ML comparator evaluation,CF08,tests/evaluation.test.mjs,G1_AUTHORITY,synthetic holdout only,unassigned
 UI,desktop mobile and labeled media,CF09,tests/browser/dashboard.spec.mjs,competition package,browser tested,unassigned
-RECORDS,CSV JSON SHA256 and serial schema,CF10,tests/api.test.mjs,G1_AUTHORITY,simulation export serial producer no immutable physical recorder,unassigned
+RECORDS,CSV JSON SHA256 and serial schema,CF10,tests/recorder.test.mjs;tests/replay.test.mjs,G1_AUTHORITY,simulation replay only,unassigned
 HARDWIRED,independent hazardous energy removal,CF11,docs/firmware.md,G0_SAFE_PLANT,physical required not implemented by software,human safety owner
 TIMING,safety 50ms IO 10ms nominal tasks,CF12,firmware/src/main.cpp,G0_SAFE_PLANT,compiled worst-case timing unmeasured,qualified reviewer
 CUSTOMER,operator pain cheap fix and payer,CF13,docs/model-validation.md,G4_CUSTOMER,not supplied,human team
 FIELD,monitor only then qualified control,CF14,docs/firmware.md,G5_FIELD_EFFECT,not authorized or implemented,qualified technician
 TRANSFER,sealed configuration families second room,CF15,docs/model-validation.md,G6_REPEATABILITY,no physical validation,independent custodian
-SECURITY,OIDC tenancy RBAC RLS audit,CF16,docs/protocols.md,post G3 production,deliberately deferred public synthetic service only,unassigned
+SECURITY,public synthetic service boundary,CF16,docs/protocols.md,post G3 production,deliberately deferred public synthetic service only,unassigned
 REMOTE,signed leases MQTT OTA PLC adapters,CF17,docs/protocols.md,post physical gates,contract drafts only unimplemented,unassigned
 AI,explanation isolated from control,CF18,tests/api.test.mjs,competition package,optional Vertex disabled public route deterministic,unassigned
 CONTRACTS,versioned telemetry quality control provenance labels,FEAT-001,tests/contracts.test.ts,G1_AUTHORITY,fixture and transition tested physical evidence unverified,unassigned
 STATES,canonical operating states and reject-to-safe transitions,FEAT-001,tests/contracts.test.ts,G2_ABSTENTION,software tested no actuator authority,unassigned
 VECTORS,cross-language generated firmware safety vectors,FEAT-001,firmware/include/generated/safety_vectors.hpp,G0_SAFE_PLANT,generation checked native/PlatformIO toolchain evidence required,unassigned
 PROVENANCE,immutable evidence class and G0-G6 boundary,FEAT-001,docs/provenance.md,all gates,simulation-only documentation,unassigned
-PULSE-BLOCKS,independent pulse blocks and stable-window guards,FEAT-005,tests/control-validation.test.mjs,G1_AUTHORITY,deterministic synthetic validation,unassigned
+PULSE-BLOCKS,independent alternating pulse blocks and stable-window guards,FEAT-005,tests/control-validation.test.mjs,G1_AUTHORITY,deterministic synthetic validation,unassigned
 BASELINE-GROUPING,grouped no-ML comparator evaluation and frozen features,FEAT-005,tests/evaluation.test.mjs,G1_AUTHORITY,synthetic holdout only,unassigned
-CONSTRAINTS,trajectory/reachability/energy/condensation/timing constraints,FEAT-005,analysis/constraints.mjs,G2_ABSTENTION,synthetic policy checks,unassigned
-OOD-ABSTENTION,OOD detection and machine-readable safe abstention,FEAT-005,artifacts/simulation/evaluation.json,G2_ABSTENTION,synthetic report; no actuator authority,unassigned
-FAULT-COVERAGE,named safe outcome for injected fault matrix,FEAT-005,artifacts/simulation/evaluation.json,G2_ABSTENTION,synthetic fault coverage only,unassigned
+CONSTRAINTS,trajectory reachability energy condensation timing constraints,FEAT-005,analysis/constraints.mjs,G2_ABSTENTION,synthetic policy checks,unassigned
+NO-EXCURSION,normal no-action semantics,FEAT-005,tests/evaluation.test.mjs,G2_ABSTENTION,NO_ACTION is not unreachable,unassigned
+CORRECTABLE-FAMILY,declared synthetic bounded correction family,FEAT-005,tests/evaluation.test.mjs,G1_AUTHORITY,synthetic passing criterion only,unassigned
+OOD-ABSTENTION,OOD detection and machine-readable safe abstention,FEAT-005,tests/evaluation.test.mjs,G2_ABSTENTION,synthetic report no actuator authority,unassigned
+FAULT-COVERAGE,named safe outcome for injected fault matrix,FEAT-005,tests/evaluation.test.mjs,G2_ABSTENTION,synthetic fault coverage only,unassigned
+PUBLIC-PATH,canonical API provenance and compatibility facade boundary,FEAT-005,tests/public-experiment.test.ts;tests/api.test.mjs,competition package,VERSIONED_PLANT_VIRTUAL_DEVICE SIMULATED only,unassigned
+RELEASE-GATE,full test evaluation replay SBOM Docker and deployment checks,FEAT-005,docs/operations.md;docs/sbom.md,all gates,software release evidence only,unassigned
+RELEASE-MANIFEST,commit digest SBOM evaluation model replay anchor and routes,FEAT-005,scripts/create-release-manifest.mjs;contracts/jsonschema/release-manifest.schema.json,all gates,generated under ignored artifacts only,unassigned
+LIMITATIONS,public-safe simulation-only submission wording,FEAT-005,README.md;docs/firmware.md;docs/provenance.md,all gates,no hardware or physical claims,unassigned

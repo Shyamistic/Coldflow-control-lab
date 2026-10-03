@@ -9,7 +9,7 @@ node scripts/check-sbom.mjs artifacts/sbom.json docs/license-allowlist.json
 node scripts/write-sbom-metadata.mjs artifacts/sbom.json artifacts/sbom-metadata.json coldflow-simulation:local local
 ```
 
-Review the generated `artifacts/sbom.json` and `artifacts/sbom-metadata.json` as build artifacts, retain them with the image ID and source revision, and run the organization's license policy scanner against the component list. The repository gate rejects GPL/AGPL/SSPL/BUSL dependencies and **fails on every undeclared license unless the exact component/version has a retained `reviewed-approved` decision in [docs/license-allowlist.json](license-allowlist.json)**. The current `webgl-constants@1.1.1` omission is therefore explicit review evidence, not a silent pass; re-review it on any version change. The license command can also retain a machine-readable result for release evidence:
+A complete software release gate is `npm ci`, `npm test`, `npm run lint`, `npm run build`, `npm run evaluate:simulation`, `npm run test:e2e`, record/replay verification, advisory-model evaluation, SBOM/license checking, and Docker build/smoke when Docker is available. Native g++ and PlatformIO jobs are toolchain-only additions. Record each passed command and its UTC completion time for the release manifest; a generated report is evidence of the software checks only, never physical readiness.
 
 ```sh
 npm sbom --sbom-format=cyclonedx > artifacts/sbom.json

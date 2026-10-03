@@ -1,67 +1,75 @@
 # ColdFlow Control Lab
 
-Competition software demonstrator: six-zone air-temperature simulation, bounded secondary-airflow decisions, conservative abstention, comparisons and a Three.js chamber concept. **Not live hardware, product-core measurement, certified safety equipment, field validation or a measured energy/food-loss result.** Physical evidence gates G0-G6 remain unpassed.
+ColdFlow is a competition software demonstrator: a six-zone air-temperature simulation, bounded secondary-airflow decisions, conservative abstention, comparator evaluation, and an interactive Three.js chamber concept. **It is simulation-only: not live hardware, product-core measurement, certified safety equipment, field validation, or a measured energy/food-loss result.** Physical evidence gates G0-G6 remain unpassed.
 
-## Evidence and commissioning boundary
+## Public release boundary
 
-The application preserves the public `SIMULATION` evidence value for API, CSV and JSON compatibility. New contracts use the explicit classes `SIMULATED`, `REPLAY`, `LIVE_TABLETOP` and `FIELD_DATA`; these are provenance claims, not interchangeable quality grades. No current artifact is `FIELD_DATA`, and no simulated or replay result is a physical validation result. Outcome labels are advisory (`CORRECTABLE`, `RESTACK_REQUIRED`, `CAPACITY_OR_EQUIPMENT_FAULT`, `SENSOR_OR_EVENT_ARTIFACT`, `UNKNOWN` or `ABSTAIN`); the model never has actuator authority and invalid state transitions reject to `SAFE_FALLBACK`.
+The canonical public experiment path is `POST /api/experiments` → `runCanonicalExperiment` → the versioned configuration, plant, and `VirtualDevice` path identified as `VERSIONED_PLANT_VIRTUAL_DEVICE`. Its output is deterministic and records configuration, manifest, output, and replay hashes. The older domain facade is compatibility-only; it is not a second physical or control path. Public `SIMULATION` values remain for REST/CSV/JSON compatibility, while canonical provenance uses `SIMULATED` and replay uses `REPLAY`.
 
-Physical readiness remains bounded by gates G0-G6: G0 safe plant and hardwired protection, G1 authority, G2 abstention, G3 tabletop effect, G4 customer acceptance, G5 field effect and G6 repeatability/transfer. The current repository is simulation-only, has no assembled hardware, and has passed none of these physical gates. `RESTACK_REQUIRED` is a contract state for a future qualified workflow, not a diagnosis emitted by the current blocked-path simulation. See [docs/provenance.md](docs/provenance.md) for the evidence rules.
+The simulator includes `correctable.v1`, an intentionally synthetic family with a declared warm-zone excursion and bounded simulated airflow authority. It is useful for testing a positive passing criterion; it is not a measured or physical correction result. Normal `NO_EXCURSION` cases are no-action (`NO_ACTION`, reason `NO_EXCURSION_ALREADY_IN_TARGET`), not unreachable and not corrective evidence. Obstructed, inadequate-source, stale-sensor, actuator, and out-of-envelope cases are evidence-gated failures or `ABSTAIN`; `RESTACK_REQUIRED` is emitted only by the grouped synthetic evaluation when bounded failure and matched path-clear improvement are both observed. These labels are advisory and never grant actuator authority.
 
-## Public Links
+No hardware is assembled or commissioned. Firmware remains disabled and fail-closed; G0-G6 are not passed. The 3D view is a concept visualization, not CFD or a calibrated digital twin. Synthetic labels are not physical ground truth, host tests are not hardware-in-the-loop, and the project makes no production, food, energy, field-efficacy, or certification claim.
+
+See [docs/provenance.md](docs/provenance.md) for evidence rules and [docs/traceability.csv](docs/traceability.csv) for the software evidence map.
+
+## Public links
 
 - [Deployed simulation dashboard](https://coldflow-demo-749096933589.asia-south1.run.app)
 - [Source repository](https://github.com/Shyamistic/Coldflow-control-lab)
 
-## Run
+## Run and demonstrate
 
-Node 24 recommended; npm lockfile supplied.
+Node 24 and the supplied npm lockfile are required. The dashboard runs against the built server at `http://localhost:8080`; `npm run dev` starts the Vite frontend and proxies `/api` to that server.
 
 ```sh
 npm ci
-npm test
 npm run build
 npm start
 ```
 
-Production server: http://localhost:8080. For frontend development run `npm run dev`; Vite proxies `/api` to the server on 8080. A port already in use must be changed rather than stopping somebody else's server. Use `PORT` for the API and Vite's `--port` for development.
+Select a scenario and comparator, approve a **simulated** 60-second lease, then play or scrub the deterministic synthetic record. Reset or changing scenarios revokes the browser lease. The UI shows hashes, provenance, zone-air traces, bounded model output, faults, and export controls. PNG/WebM exports are visibly marked `3D CONCEPT - SIMULATION ONLY`; browser-produced files are not server-stored.
 
-## Demonstration
+Scenarios include balanced loading, partial/full obstruction, inadequate source, stale probe, actuator fault, and the declared synthetic correctable excursion. Comparators include fixed-normal, fixed-high, expert rule, identified control, and path-clear. The path-clear comparator changes only the synthetic obstruction configuration; it is not a restack experiment.
 
-Select a scenario and comparator, approve a **simulated** 60-second lease, then play or scrub the precomputed synthetic record. Source context and the software cutout gate browser playback/animation, not physical equipment. Reset or a scenario change revokes the browser lease. Experimental leases inside deterministic runs are synthetically renewed; this is not a real unattended control policy.
+## Clean-checkout verification gate
 
-The scenario set covers partial/full obstruction, inadequate source, stale probe, actuator fault and balanced loading. Compare fixed-normal, fixed-high, expert rule, identified control and physical path-clear. All comparators share the same safety envelope. The path-clear comparator changes the synthetic conductance/load only for obstruction scenarios; it is not a measured restack experiment.
-
-CSV/JSON exports carry `SIMULATION`. PNG and up-to-12-second WebM exports visibly carry `3D CONCEPT - SIMULATION ONLY`. Canvas exports omit DOM UI overlays; the rendered geometry and provenance are captured. Output files are produced by the browser, not server-stored. Scene colors are illustrative probe-linked categories, not a thermal-camera field. The geometry currently depicts fans/crates/plenum/external electronics, not a complete fabrication drawing or an implemented servo-vane mechanism.
-
-## Verification
+From a clean checkout, install dependencies and run the normal release gate. The test script regenerates the evaluation report, builds the application, runs the Node contract/simulator/evidence suites, and runs Playwright unless `--unit-only` is supplied.
 
 ```sh
+npm ci
+npx playwright install chromium
 npm test
 npm run lint
 npm run build
-npx playwright install chromium
+npm run evaluate:simulation
 npm run test:e2e
-node --experimental-strip-types --test tests/hil.test.mjs tests/contracts.test.ts tests/domain.test.ts
-g++ -std=c++17 -Wall -Wextra -Werror firmware/tests/safety_test.cpp -o safety-test
-./safety-test
-g++ -std=c++17 -Wall -Wextra -Werror firmware/tests/hal_test.cpp -o hal-test
-./hal-test
-pio run --project-dir firmware
 ```
 
-The browser suite runs against the built production server and checks desktop/mobile workflows, nonblank/moving canvas pixels, no page overflow, faults, traces, downloads, comparisons and concept-video encoding. Artifacts go to ignored `artifacts/browser`; screenshots must also be visually reviewed. Run a hosted check by setting `TEST_URL` to the deployment URL. Firmware native tests exercise the portable safety policy; PlatformIO compiles the ESP32-S3 image. **Neither test energizes or certifies hardware.** Library warnings are not suppressed to disguise them.
+The release gate also supports the documented replay and model checks. Outputs belong under ignored `artifacts/` and must not be committed:
 
-See [docs/model-validation.md](docs/model-validation.md), [docs/firmware.md](docs/firmware.md), [docs/protocols.md](docs/protocols.md), [docs/rest-api-v1.yaml](docs/rest-api-v1.yaml), and [docs/traceability.csv](docs/traceability.csv).
+```sh
+node scripts/record-simulation.mjs --family normal.v1 --seed 2026 --output artifacts/simulation/run.jsonl
+node scripts/replay-simulation.mjs --input artifacts/simulation/run.jsonl --report artifacts/simulation/replay-report.json
+node ml/train.mjs --families normal.v1,obstructed.v1,capacity.v1,correctable.v1 --seeds 101,202,303,404 --output artifacts/ml/candidate.json
+node ml/evaluate.mjs --model artifacts/ml/candidate.json --output artifacts/ml/evaluation.json
+npm sbom --sbom-format=cyclonedx > artifacts/sbom.json
+node scripts/check-sbom.mjs artifacts/sbom.json docs/license-allowlist.json artifacts/sbom-check.json
+```
 
-## Cloud and AI
+Native g++ and PlatformIO checks are additional CI/toolchain gates when those tools are available; they do not energize or certify hardware. Docker checks likewise require a running Docker Desktop engine and produce no physical evidence.
 
-The Dockerfile uses an unprivileged Node user. The public demonstration has no database, persistent customer data, authentication, telemetry ingestion or actuator API. Set Cloud Run min instances to 0, max instances to 1 and use a dedicated service account with no project roles for this public simulation. Rate limiting is process-local; it is not a production abuse-control boundary or guaranteed spending cap. Cloud Build/artifact storage/egress may still cost money.
+## Release evidence and deployment verification
 
-`/api/explain` is deterministic and costs no AI tokens. `/api/vertex-explain` is an optional **explanation-only** adapter, disabled by default and requiring a server-managed operator bearer token if enabled. It never supplies control setpoints. Supply secrets via Secret Manager, never browser source or a committed environment file. Enabling Vertex requires an explicit budget/quota decision, `roles/aiplatform.user` on a suitable restricted service account, appropriate model/region access and `EXPLANATION_TOKEN`. The UI intentionally does not collect secrets or expose this private route. Vertex output requires review and has no evidence credit. No image-generation billing or external IP upload is performed by default.
+A release is not complete until source revision, package-lock hash, passed command results, evaluation report, advisory model decision/artifact, replay JSONL/report/trusted anchor, SBOM/license result, immutable image digest, and deployment checks are bound in the ignored `artifacts/release/release-manifest.json`. Generate it only after replacing all placeholders with resolved values; the manifest cannot contain itself and is reproducibility evidence, not a signature or physical chain of custody. The deployment checks must cover `/api/live`, `/api/ready`, `/api/health`, `/api/metrics`, and `/api/experiments`. `/api/ready` must continue to report `hardwareConnected: false`, no physical gates, and no actuator authority. `/api` has no physical command route.
 
-## Submission assets and remaining gates
+Generated evaluation, replay, SBOM, browser, Docker, and release-manifest files are local/CI evidence and remain outside source control. Do not publish credentials, private research, raw customer data, generated binaries, or ignored artifacts.
 
-Use actual dashboard captures, labeled 3D concept exports and source links in the PPT. Separate a concept video from a future physical demonstration. Organizer AI/original-work permission remains a human requirement. The source pack includes disabled-by-default firmware, not a field-ready installation. Real diagnostic actuation, sensor/source/condensation/current instrumentation, physical calibration, hardwired protection, qualification, food recipes, sealed experiments, customer acceptance, signed remote commands, OTA and industrial protocols remain gated. A more impressive dashboard cannot pass those gates.
+## Cloud and optional AI
 
-Public repository scope is this directory only; private research, credentials, raw customer data, local tools and generated binaries must not be published. Third-party code is used through declared packages; retain dependency notices and review licensing before redistribution. No independent patentability or freedom-to-operate conclusion is supplied.
+The public service is stateless and has no database, persistent customer data, authentication, telemetry ingestion, or actuator API. Keep Cloud Run min instances at 0 and max instances at 1 unless separately reviewed; rate limiting is process-local and not a spending boundary. `/api/explain` is deterministic. Optional `/api/vertex-explain` is disabled by default and explanation-only when explicitly configured; it cannot issue setpoints or control commands. Secrets belong in Secret Manager, never browser code or committed files.
+
+## Submission wording
+
+**ColdFlow is an interactive, simulation-only software demonstrator for bounded airflow-control reasoning. It presents deterministic virtual-device experiments, safety-oriented abstention, provenance, and reproducible evaluation. No hardware has been assembled or commissioned; no physical, production, food, energy, field, CFD/digital-twin, ground-truth, hardware-in-the-loop, or certification claim is made.**
+
+The source pack includes a disabled-by-default firmware scaffold and a 3D concept, not a field-ready installation or fabrication drawing. Any future hardware, calibration, qualification, customer acceptance, signed remote command, OTA, industrial protocol, or site evidence remains a separately gated activity.

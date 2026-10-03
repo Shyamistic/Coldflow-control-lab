@@ -1,0 +1,44 @@
+{
+  "schema": "coldflow.model-selection.v1",
+  "schemaVersion": "1.0",
+  "generatedAt": "2026-01-01T00:00:00.000Z",
+  "decision": "NO_ML_BASELINE",
+  "reason": "HELD_OUT_UTILITY_MARGIN_OR_SAFETY_GATE_NOT_MET",
+  "evidenceClass": "SIMULATED",
+  "evaluationSchema": "coldflow.advisory-evaluation.v1",
+  "modelArtifactHash": "d10e65315e1bf40f6026b968d1b24d8a71ee24611d5d08bb7d03d446c915f0f7",
+  "utilityMetric": {
+    "minimumUtilityMargin": 0.05,
+    "noIncreaseInFalseCorrectableRisk": true,
+    "noUnsafeAuthorizationRisk": true,
+    "requiresHeldOutFamilyGroups": true
+  },
+  "baseline": {
+    "name": "NO_ML_BASELINE",
+    "utility": 0,
+    "falseCorrectableRate": 0,
+    "unsafeAuthorizationRisk": 0,
+    "decision": "ABSTAIN"
+  },
+  "candidate": {
+    "utility": 0,
+    "utilityImprovement": 0,
+    "falseCorrectableRate": 0,
+    "unsafeAuthorizationRisk": 0
+  },
+  "safetyBoundary": {
+    "modelAdvisoryOnly": true,
+    "directActuatorWrite": false,
+    "safeOutput": [
+      0,
+      0
+    ],
+    "deterministicShieldAuthoritative": true,
+    "removable": true
+  },
+  "limitations": [
+    "Synthetic simulator labels and seeds are not physical evidence.",
+    "No model is authorized to select or write an actuator command.",
+    "Physical calibration, transfer and independent hardware evidence remain required."
+  ]
+}

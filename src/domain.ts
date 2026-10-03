@@ -1,5 +1,7 @@
 import { CONTEXTS, SIMULATION_COMPATIBILITY_VALUE, SIMULATION_PROFILE } from './contracts.ts'
 import type { CanonicalContext } from './contracts.ts'
+import { advisoryForDecision } from './advisory.ts'
+import type { Advisory } from './advisory.ts'
 import { createLegacyPlant, stepLegacyPlant } from './simulator/plant.ts'
 
 export type Context = CanonicalContext
@@ -131,12 +133,23 @@ export function identifyAuthority(initial: Plant, configurationRevision = 1): Au
   return { cooling, uncertainty: 0.2, horizonSeconds: LIMITS.horizonSeconds, sourceAtIdentification: initial.supply, configurationRevision }
 }
 
-export function chooseAction(temperatures: ZoneVector, authority: Authority, source: number, configurationRevision = 1): { fans: Pair; state: Decision; reason: string } {
-  if (authority.configurationRevision !== configurationRevision || Math.abs(source - authority.sourceAtIdentification) > 0.5) return { fans: [0, 0], state: 'ABSTAIN', reason: 'MODEL_OUT_OF_ENVELOPE' }
+export interface Action {
+  fans: Pair
+  state: Decision
+  reason: string
+  advisory: Advisory
+}
+
+function action(fans: Pair, state: Decision, reason: string): Action {
+  return { fans, state, reason, advisory: advisoryForDecision(state, reason) }
+}
+
+export function chooseAction(temperatures: ZoneVector, authority: Authority, source: number, configurationRevision = 1): Action {
+  if (authority.configurationRevision !== configurationRevision || Math.abs(source - authority.sourceAtIdentification) > 0.5) return action([0, 0], 'ABSTAIN', 'MODEL_OUT_OF_ENVELOPE')
   const warm = temperatures.map((value, index) => ({ value, index })).filter(zone => zone.value > LIMITS.high)
-  if (!warm.length) return { fans: [0, 0], state: 'OBSERVE', reason: 'NO_EXCURSION' }
-  if (source >= LIMITS.high) return { fans: [0, 0], state: 'INVESTIGATE_EQUIPMENT', reason: 'SOURCE_INADEQUATE' }
-  if (warm.some(zone => authority.cooling[zone.index].reduce((sum, gain) => sum + Math.max(0, gain) * LIMITS.maximum, 0) <= authority.uncertainty)) return { fans: [0, 0], state: 'ABSTAIN', reason: 'INSUFFICIENT_AUTHORITY_INSPECT_PATH' }
+  if (!warm.length) return action([0, 0], 'OBSERVE', 'NO_EXCURSION')
+  if (source >= LIMITS.high) return action([0, 0], 'INVESTIGATE_EQUIPMENT', 'SOURCE_INADEQUATE')
+  if (warm.some(zone => authority.cooling[zone.index].reduce((sum, gain) => sum + Math.max(0, gain) * LIMITS.maximum, 0) <= authority.uncertainty)) return action([0, 0], 'ABSTAIN', 'INSUFFICIENT_AUTHORITY_INSPECT_PATH')
   let best: Pair = [0, 0]
   let bestScore = Number.POSITIVE_INFINITY
   for (const first of [0, 0.2, 0.4, 0.6, 0.8]) {
@@ -147,8 +160,8 @@ export function chooseAction(temperatures: ZoneVector, authority: Authority, sou
       if (score < bestScore) { bestScore = score; best = [first, second] }
     }
   }
-  if (!best.some(value => value > 0)) return { fans: best, state: 'ABSTAIN', reason: 'NO_SAFE_BOUNDED_ACTION' }
-  return { fans: best, state: 'AUTO_CORRECT', reason: 'SIMULATED_AUTHORITY_SUPPORTED' }
+  if (!best.some(value => value > 0)) return action(best, 'ABSTAIN', 'NO_SAFE_BOUNDED_ACTION')
+  return action(best, 'AUTO_CORRECT', 'SIMULATED_AUTHORITY_SUPPORTED')
 }
 
 export function validSafety(overrides: Partial<SafetyInput> = {}): SafetyInput {

@@ -21,7 +21,7 @@ export function parseTrainingArguments(argumentsList = process.argv.slice(2)) {
     if (inline === undefined) index += 1
   }
   return {
-    families: parseList(values.families, ['normal.v1', 'obstructed.v1', 'capacity.v1']),
+    families: parseList(values.families, ['normal.v1', 'obstructed.v1', 'capacity.v1', 'correctable.v1']),
     seeds: parseList(values.seeds, ['101', '202', '303', '404'], true),
     report: values.report ?? 'artifacts/simulation/evaluation.json',
     output: values.output ?? 'artifacts/ml/candidate.json',

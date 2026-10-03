@@ -10,9 +10,6 @@ export function evaluateTrajectoryConstraints({ trajectory, actions = [], limits
   const valid = finiteTrajectory(trajectory)
   if (!valid) reasons.push('INVALID_TRAJECTORY')
   const samples = valid ? trajectory : []
-  const temperatures = samples.flatMap(sample => sample.temperaturesC)
-  const temperatureWithinBounds = valid && temperatures.every(value => value >= limits.lowC && value <= limits.highC)
-  if (!temperatureWithinBounds) reasons.push('TEMPERATURE_BOUNDS')
   const trajectoryWithinStep = valid && samples.every((sample, index) => index === 0 || sample.temperaturesC.every((value, zone) => Math.abs(value - samples[index - 1].temperaturesC[zone]) <= limits.maxStepC))
   if (!trajectoryWithinStep) reasons.push('TRAJECTORY_STEP')
   const duties = actions.flatMap(action => Array.isArray(action) ? action : action?.duty ?? [])
@@ -25,13 +22,26 @@ export function evaluateTrajectoryConstraints({ trajectory, actions = [], limits
   if (!condensationSafe) reasons.push('CONDENSATION_UNSAFE')
   const timingValid = timing.maxAgeMs <= limits.maxAgeMs && timing.leaseMs > 0 && timing.leaseMs <= limits.leaseMs
   if (!timingValid) reasons.push('TIMING_OR_EXPIRY')
-  const reachable = valid && sourceC < limits.highC && samples.at(0).temperaturesC.some((value, zone) => value > limits.highC && samples.at(-1).temperaturesC[zone] < value)
-  if (!reachable) reasons.push('UNREACHABLE_TARGET')
+  const initialTargetZones = valid ? samples.at(0).temperaturesC.map((value, zone) => value > limits.highC ? zone : null).filter(zone => zone !== null) : []
+  const temperatureWithinBounds = valid && samples.every((sample, sampleIndex) => sample.temperaturesC.every((value, zone) => {
+    const declaredInitialExcursion = sampleIndex === 0 && initialTargetZones.includes(zone) && value > limits.highC
+    return declaredInitialExcursion || (value >= limits.lowC && value <= limits.highC)
+  }))
+  if (!temperatureWithinBounds) reasons.push('TEMPERATURE_BOUNDS')
+  const finalTemperatures = valid ? samples.at(-1).temperaturesC : []
+  const reachable = valid && sourceC < limits.highC && (initialTargetZones.length === 0 || initialTargetZones.every(zone => finalTemperatures[zone] < samples.at(0).temperaturesC[zone]))
+  const reached = initialTargetZones.length === 0 || (reachable && initialTargetZones.every(zone => finalTemperatures[zone] <= limits.highC))
+  const reachabilityOutcome = initialTargetZones.length === 0 ? 'NO_EXCURSION' : reached ? 'CORRECTED' : 'UNREACHABLE'
+  if (reachabilityOutcome === 'UNREACHABLE') reasons.push('UNREACHABLE_TARGET')
   return {
     schema: CONSTRAINT_SCHEMA,
     passed: reasons.length === 0,
     reasons: [...new Set(reasons)],
     temperatureWithinBounds,
+    initialTargetZones,
+    targetZones: initialTargetZones,
+    reachabilityOutcome,
+    outcome: reachabilityOutcome,
     trajectoryWithinStep,
     dutyWithinBounds,
     energyWithinBounds,
@@ -57,6 +67,8 @@ export function detectOOD(features, envelope = { meanTemperatureC: [-5, 15], spr
 }
 
 export function safeAbstention({ ood = { isOOD: false }, constraints = { passed: true }, fault = null, reason = null } = {}) {
+  const noAction = constraints.passed && constraints.reachabilityOutcome === 'NO_EXCURSION' && !ood.isOOD && !fault && !reason
+  if (noAction) return { decision: 'NO_ACTION', reason: 'ALREADY_IN_TARGET', reasons: [], safeOutput: [0, 0], modelAdvisoryOnly: true, directActuatorWrite: false, shieldAuthoritative: true }
   const reasons = [
     ...(ood.isOOD ? ['OOD_INPUT'] : []),
     ...(constraints.passed ? [] : constraints.reasons ?? ['CONSTRAINT_FAILURE']),

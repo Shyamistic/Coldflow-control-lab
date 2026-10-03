@@ -1,6 +1,7 @@
-import { access } from 'node:fs/promises'
+import { access, writeFile } from 'node:fs/promises'
 import { appendRecord } from './append-only.mjs'
-import { createManifest, hashCanonical } from './manifest.mjs'
+import { canonicalInputForSequence, createManifest, hashCanonical } from './manifest.mjs'
+import { createTrustedAnchor } from './trust.mjs'
 import { classifySyntheticLabel } from '../analysis/labels.mjs'
 import { VirtualDevice } from '../src/simulator/virtual-device.ts'
 
@@ -17,9 +18,10 @@ export function canonicalOutput(result) {
   }
 }
 
-export function evidenceForResult(manifest, result, second) {
+export function evidenceForResult(manifest, result, _second) {
   return {
-    corrected: manifest.family === 'obstructed.v1' && second >= 60 && result.accepted,
+    corrected: false,
+    noExcursion: manifest.family === 'normal.v1' && manifest.configuration.air.initialTemperaturesC.every(value => value <= 8),
     authoritySufficient: result.accepted,
     stale: result.faults.sensorStale || result.faults.sensorDropout || result.faults.networkDelay,
     insufficient: manifest.family === 'capacity.v1' || !manifest.configuration.source.proven,
@@ -31,7 +33,7 @@ export function simulationRecords(manifest) {
   const records = []
   const device = new VirtualDevice(manifest.configuration)
   for (let second = 0; second < manifest.durationSeconds; second += 1) {
-    const input = { requested: [0.4, 0.4], nowMs: second * 1000, leaseUntilMs: second * 1000 + 60000, sequence: second + 1 }
+    const input = canonicalInputForSequence(manifest, second + 1)
     const result = device.tick(input)
     const output = canonicalOutput(result)
     const evidence = evidenceForResult(manifest, result, second)
@@ -64,13 +66,21 @@ export function simulationRecords(manifest) {
 }
 
 export async function writeSimulationRun(path, manifest = createManifest()) {
+  const anchorPath = `${path}.anchor.json`
   try {
     await access(path)
     throw new Error('Refusing to overwrite simulation record file; output already exists')
   } catch (error) {
     if (error.code !== 'ENOENT') throw error
   }
+  try {
+    await access(anchorPath)
+    throw new Error('Refusing to overwrite trusted run anchor; output already exists')
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error
+  }
   await appendRecord(path, { ...manifest, schema: 'coldflow.simulation-record.v1', manifestSchema: manifest.schema, type: 'manifest' })
   for (const record of simulationRecords(manifest)) await appendRecord(path, record)
+  await writeFile(anchorPath, `${JSON.stringify(createTrustedAnchor(manifest), null, 2)}\n`, 'utf8')
   return manifest
 }

@@ -1,21 +1,26 @@
 import type { Scenario } from '../domain.ts'
 import type { FaultEvent } from './faults.ts'
 import { capacityConfiguration } from './configurations/capacity.ts'
+import { correctableConfiguration } from './configurations/correctable.ts'
 import { faultMatrixConfiguration } from './configurations/fault-matrix.ts'
 import { normalConfiguration } from './configurations/normal.ts'
 import { obstructedConfiguration } from './configurations/obstructed.ts'
 
 export interface ConfigurationManifest {
   version: 'cf-sim-config-v1'
-  family: 'normal' | 'obstructed' | 'capacity' | 'fault-matrix'
+  family: 'normal' | 'obstructed' | 'capacity' | 'fault-matrix' | 'correctable'
   manifestHash: string
   seed: number
   assumptions: readonly string[]
+  synthetic?: { evidenceClass: 'SIMULATED'; source: string; physicalHardwareAssembled: false; physicalGroundTruth: false }
+  authority?: { comparator: 'ADVISORY_ONLY'; actuator: 'DISABLED'; safety: 'DETERMINISTIC_SHIELD_AUTHORITATIVE' }
+  boundedCriteria?: { initialTargetZones: readonly number[]; upperLimitC: number; maxDuty: number; maxEnergyWh: number; maxDurationSeconds: number; condensationClearanceC: number }
   air: {
     initialTemperaturesC: readonly number[]
     supplyTemperatureC: number
     thermalMassC: readonly number[]
     mixingConductance: number
+    actuatorConductance: readonly (readonly [number, number])[]
     loads: readonly number[]
   }
   source: { proven: boolean; temperatureC: number }
@@ -31,6 +36,7 @@ export const CONFIGURATION_FAMILIES = {
   normal: normalConfiguration,
   obstructed: obstructedConfiguration,
   capacity: capacityConfiguration,
+  correctable: correctableConfiguration,
   'fault-matrix': faultMatrixConfiguration,
 } as const
 

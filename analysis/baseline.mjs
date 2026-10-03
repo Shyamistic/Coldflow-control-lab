@@ -1,5 +1,5 @@
 import { DEFAULT_LIMITS, evaluateTrajectoryConstraints, detectOOD, safeAbstention } from './constraints.mjs'
-import { authorityFromPulseBlocks } from './control.mjs'
+import { authorityFromPulseBlocks, canonicalTrajectory } from './control.mjs'
 
 export const COMPARATORS = ['fixed-normal', 'fixed-high', 'expert-rule', 'identified', 'path-clear']
 
@@ -15,33 +15,12 @@ function dutyFor(method, temperatures, family, authority) {
   return gain > authority.uncertainty ? [0.4, 0.4] : [0, 0]
 }
 
-function trajectoryFor({ family, method, authority, durationSeconds = 30 }) {
-  const initial = family === 'normal.v1' ? [6.5, 6.7, 6.8, 6.4, 6.6, 6.7] : [10.5, 8.9, 7.4, 6.6, 7.1, 8.5]
-  const sourceC = family === 'capacity.v1' ? 9.4 : 3.5
-  const trajectory = []
-  const actions = []
-  let temperatures = [...initial]
-  for (let second = 0; second <= durationSeconds; second += 1) {
-    const duty = dutyFor(method, temperatures, family, authority)
-    actions.push({ second, duty: [...duty] })
-    trajectory.push({ seconds: second, temperaturesC: temperatures.map(value => Number(value.toFixed(6))), supplyC: sourceC })
-    if (second === durationSeconds) break
-    const power = duty.reduce((sum, value) => sum + 8 * value ** 3, 0)
-    temperatures = temperatures.map((value, zone) => {
-      const gain = authority.cooling[zone]?.[0] * duty[0] + authority.cooling[zone]?.[1] * duty[1] || 0
-      const obstruction = family === 'obstructed.v1' && zone === 0 ? 0.35 : 1
-      return Math.max(-20, Math.min(50, value + (sourceC - value) * 0.0015 + 0.0008 - gain * obstruction * 0.012 + power / 240000))
-    })
-  }
-  return { trajectory, actions }
-}
-
 function matrixMetrics(blocks, authority) {
   const responses = blocks.flatMap(block => block.baseline.at(-1).temperaturesC.map((value, zone) => value - block.intervention.at(-1).temperaturesC[zone]))
   const meanResponse = responses.reduce((sum, value) => sum + value, 0) / responses.length
   const variance = responses.reduce((sum, value) => sum + (value - meanResponse) ** 2, 0) / responses.length
   const signsPositive = authority.cooling.every(row => row.every(value => value >= 0))
-  const rank = authority.cooling.some(row => row[0] > 0) && authority.cooling.some(row => row[1] > 0) ? 2 : 1
+  const rank = authority.cooling.some(row => row[0] !== 0) && authority.cooling.some(row => row[1] !== 0) ? 2 : 1
   const a = authority.cooling[0]
   const b = authority.cooling[1]
   const determinant = Math.abs(a[0] * b[1] - a[1] * b[0])
@@ -61,7 +40,8 @@ function matrixMetrics(blocks, authority) {
 export function evaluateComparator({ family, seed, method, blocks, durationSeconds = 30, fault = null } = {}) {
   if (!COMPARATORS.includes(method)) throw new Error(`Unsupported comparator: ${method}`)
   const authority = authorityFromPulseBlocks(blocks)
-  const { trajectory, actions } = trajectoryFor({ family, method, authority, durationSeconds })
+  const simulated = canonicalTrajectory({ family, seed, method, authority, durationSeconds, dutyFor })
+  const { trajectory, actions } = simulated
   const final = trajectory.at(-1)
   const features = blocks[0].frozenFeatures
   const ood = detectOOD(features)
@@ -78,6 +58,9 @@ export function evaluateComparator({ family, seed, method, blocks, durationSecon
       ...matrix,
       trajectoryWithinBounds: constraints.temperatureWithinBounds,
       reachability: constraints.reachable,
+      reachabilityOutcome: constraints.reachabilityOutcome,
+      noAction: constraints.reachabilityOutcome === 'NO_EXCURSION',
+      corrected: constraints.reachabilityOutcome === 'CORRECTED',
       energyWh: constraints.energyWh,
       energyWithinBounds: constraints.energyWithinBounds,
       condensationSafe: constraints.condensationSafe,
@@ -95,6 +78,7 @@ export function evaluateComparator({ family, seed, method, blocks, durationSecon
     advisoryOnly: true,
     directActuatorWrite: false,
     shieldAuthoritative: true,
+    canonicalSimulator: { source: 'VERSIONED_PLANT_VIRTUAL_DEVICE', simulatorVersion: simulated.simulatorVersion, manifestHash: simulated.manifestHash, outputHashes: simulated.outputHashes },
     trajectory,
     actions,
   }

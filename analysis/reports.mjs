@@ -10,7 +10,7 @@ export function canonicalRunHash(manifest, samples) {
   return hashCanonical({ manifestHash: manifest.manifestHash, samples: samples.map(unsignedRecord) })
 }
 
-export function createReport(manifest, samples) {
+export function createReport(manifest, samples, { anchorDigest = null } = {}) {
   const labels = samples.map(sample => {
     assertLabel(sample.label)
     return sample.label
@@ -31,8 +31,11 @@ export function createReport(manifest, samples) {
     recordCount: samples.length,
     runHash: canonicalRunHash(manifest, samples),
     labelCounts: counts,
-    labels: labels.map(label => ({ label: label.label, reason: label.reason, evidenceClass: label.evidenceClass, source: label.source })),
-    integrity: 'VERIFIED_APPEND_ONLY_CHAIN',
+    labels: labels.map(label => ({ label: label.label, outcome: label.outcome, reason: label.reason, evidenceClass: label.evidenceClass, source: label.source })),
+    outcomeCounts: Object.fromEntries([...new Set(labels.map(label => label.outcome))].sort().map(outcome => [outcome, labels.filter(candidate => candidate.outcome === outcome).length])),
+    integrity: anchorDigest ? 'VERIFIED_APPEND_ONLY_CHAIN_AND_TRUSTED_ANCHOR' : 'VERIFIED_APPEND_ONLY_CHAIN',
+    trustedAnchorDigest: anchorDigest,
+    canonicalInputSchedule: manifest.inputSchedule,
     generatedAt: manifest.generatedAt,
   }
   return { ...body, reportHash: hashCanonical(body) }

@@ -18,6 +18,7 @@ for (const viewport of [{ name: 'desktop', width: 1440, height: 1000 }, { name: 
     await expect(page.getByRole('button', { name: 'Play simulation', exact: true })).toBeDisabled()
     await expect.poll(async () => (await pixelSignature(page)).colors).toBeGreaterThan(30)
     await expect(page.locator('.zone-label')).toHaveCount(6)
+    await expect(page.locator('.scene-footer')).toContainText('VERSIONED_PLANT_VIRTUAL_DEVICE')
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
     await page.getByRole('button', { name: 'Approve simulated lease' }).click()
     const before = (await pixelSignature(page)).hash

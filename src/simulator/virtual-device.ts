@@ -5,8 +5,9 @@ import { activeFaults } from './faults.ts'
 import type { FaultState } from './faults.ts'
 import { createPlant, observePlant, stepPlant } from './plant.ts'
 import type { ActuatorState, DisturbanceState, Observation, PlantState } from './plant.ts'
-import { driverAccept, shield, validSafety } from '../domain.ts'
-import type { Pair, SafetyInput, Shielded } from '../domain.ts'
+import { driverAccept, shield, validSafety } from '../safety.ts'
+import type { SafetyInput, Shielded } from '../safety.ts'
+import type { Pair } from '../domain.ts'
 
 export interface AbstractActuatorRequest {
   nowMs: number

@@ -60,7 +60,14 @@ export default function Dashboard() {
   }
   const snapshot = () => { try { composite().canvas.toBlob(blob => blob && download(blob, 'coldflow-concept-SIMULATION.png')); setMessage('Concept image exported.') } catch (error) { setMessage(String(error)) } }
   const record = () => {
-    if (recorder.current?.state === 'recording') { recorder.current.requestData(); setTimeout(() => { if (recorder.current?.state === 'recording') recorder.current.stop() }, 250); return }
+    const currentRecorder = recorder.current
+    if (currentRecorder?.state === 'recording') {
+      const stop = () => { if (currentRecorder.state === 'recording') currentRecorder.stop() }
+      const fallback = setTimeout(stop, 1000)
+      currentRecorder.addEventListener('dataavailable', () => { clearTimeout(fallback); stop() }, { once: true })
+      currentRecorder.requestData()
+      return
+    }
     if (!activeLease) { setMessage('Simulated lease not approved.'); return }
     if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) { setMessage('Video capture unavailable in this browser.'); return }
     try {
@@ -73,9 +80,19 @@ export default function Dashboard() {
       const media = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 3000000 })
       const chunks: BlobPart[] = []
       const tick = () => { paint(); canvas.getContext('2d')!.getImageData(0, 0, 1, 1); track.requestFrame() }
+      const finish = (blob: Blob, activeStream: MediaStream) => { activeStream.getTracks().forEach(activeTrack => activeTrack.stop()); canvas.remove(); setRecording(false); if (blob.size < 1024) { setMessage('Video encoder produced no usable frames.'); return }; download(blob, 'coldflow-concept-SIMULATION.webm'); setMessage('Labeled concept video exported.') }
+      const retry = () => {
+        stream.getTracks().forEach(activeTrack => activeTrack.stop())
+        const retryStream = canvas.captureStream(30); const retryTrack = retryStream.getVideoTracks()[0] as MediaStreamTrack & { requestFrame: () => void }; const retryRecorder = new MediaRecorder(retryStream, { mimeType, videoBitsPerSecond: 3000000 }); const retryChunks: BlobPart[] = []
+        const retryAnimation = setInterval(() => { paint(); retryTrack.requestFrame() }, 33)
+        retryRecorder.ondataavailable = event => { if (event.data.size) retryChunks.push(event.data) }
+        retryRecorder.onstop = () => { clearInterval(retryAnimation); finish(new Blob(retryChunks, { type: mimeType }), retryStream) }
+        retryRecorder.start(250); paint(); retryTrack.requestFrame()
+        setTimeout(() => { if (retryRecorder.state === 'recording') retryRecorder.stop() }, 1000)
+      }
       const animation = setInterval(tick, 33)
       media.ondataavailable = event => { if (event.data.size) chunks.push(event.data) }
-      media.onstop = () => { clearInterval(animation); if (recordingTimer.current) clearTimeout(recordingTimer.current); setTimeout(() => { const blob = new Blob(chunks, { type: mimeType }); stream.getTracks().forEach(track => track.stop()); canvas.remove(); setRecording(false); if (blob.size < 1024) { setMessage('Video encoder produced no usable frames.'); return }; download(blob, 'coldflow-concept-SIMULATION.webm'); setMessage('Labeled concept video exported.'); }, 100) }
+      media.onstop = () => { clearInterval(animation); if (recordingTimer.current) clearTimeout(recordingTimer.current); setTimeout(() => { const blob = new Blob(chunks, { type: mimeType }); if (blob.size < 1024) { retry(); return }; finish(blob, stream) }, 100) }
       media.start(250); tick(); recorder.current = media; setRecording(true); setRunning(true)
       recordingTimer.current = setTimeout(() => { if (media.state === 'recording') media.stop() }, 30000)
     } catch (error) { setMessage(String(error)); setRecording(false) }

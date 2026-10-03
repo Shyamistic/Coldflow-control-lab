@@ -1,10 +1,21 @@
 import { FIRMWARE_PROFILE } from '../contracts.ts'
 import { configurationForFamily } from './configuration.ts'
-import type { ConfigurationFamily } from './configuration.ts'
+import type { ConfigurationFamily, ConfigurationManifest } from './configuration.ts'
 import { activeFaults } from './faults.ts'
+import type { FaultState } from './faults.ts'
 import { createPlant, observePlant, stepPlant } from './plant.ts'
+import type { ActuatorState, DisturbanceState, Observation, PlantState } from './plant.ts'
 import { driverAccept, shield, validSafety } from '../domain.ts'
 import type { Pair, SafetyInput, Shielded } from '../domain.ts'
+
+export interface AbstractActuatorRequest {
+  nowMs: number
+  sequence: number
+  requested: Pair
+  leaseUntilMs: number
+  operatorApproved?: boolean
+  measuredAtMs?: number
+}
 
 export interface VirtualDeviceStep extends Partial<SafetyInput> {
   commissioned?: boolean
@@ -15,6 +26,17 @@ export interface VirtualDeviceResult extends Shielded {
   output: Pair
   telemetryOnly: true
   networkAvailable: boolean
+}
+
+export interface LegacyVirtualDeviceResult {
+  accepted: boolean
+  applied: Pair
+  state: 'SAFE_FALLBACK' | 'OBSERVE' | 'AUTO_CORRECT' | 'ABSTAIN' | 'INVESTIGATE_EQUIPMENT'
+  reason: string
+  observation: Observation
+  actuator: ActuatorState
+  disturbance: DisturbanceState
+  faults: FaultState
 }
 
 const canonicalReasons: Record<string, string> = {
@@ -36,17 +58,28 @@ export function firmwareReason(result: Shielded, commissioned = true): string {
 }
 
 export class VirtualDevice {
+  readonly manifest: ConfigurationManifest
+  private plant: PlantState
+  private previous: Pair = [0, 0]
   private lastSequence = 0
   private issuedSequence = 0
   private output: Pair = [0, 0]
   private commissioned: boolean
 
-  constructor(options: { commissioned?: boolean } = {}) {
-    this.commissioned = options.commissioned ?? false
+  constructor(options: { commissioned?: boolean } | ConfigurationFamily | ConfigurationManifest = {}) {
+    const isFamily = typeof options === 'string'
+    const isManifest = !isFamily && 'version' in options
+    this.manifest = isFamily ? configurationForFamily(options) : isManifest ? options : configurationForFamily('normal')
+    this.plant = createPlant(this.manifest)
+    this.commissioned = isFamily || isManifest ? true : options.commissioned ?? false
   }
+
+  get state(): PlantState { return structuredClone(this.plant) }
+  get sequence(): number { return this.lastSequence }
 
   reboot(): void {
     this.issuedSequence = this.lastSequence
+    this.previous = [0, 0]
     this.output = [0, 0]
   }
 
@@ -66,13 +99,38 @@ export class VirtualDevice {
     return { ...result, output, telemetryOnly: true, networkAvailable }
   }
 
-  currentOutput(): Pair {
-    return [...this.output]
+  submit(request: AbstractActuatorRequest): LegacyVirtualDeviceResult {
+    const observation = observePlant(this.plant)
+    const faults = activeFaults(this.manifest.faults, this.plant.seconds)
+    const disturbance = this.disturbance(faults)
+    const context = faults.doorOpen ? 'DOOR_OPEN' : faults.defrost ? 'DEFROST' : 'NORMAL'
+    const measuredAtMs = faults.sensorStale || faults.networkDelay ? request.nowMs - 2001 : request.measuredAtMs ?? observation.measuredAtMs
+    const temperatures = faults.sensorDropout ? [Number.NaN, ...observation.temperaturesC.slice(1), observation.supplyC, observation.returnAirC] : [...observation.temperaturesC, observation.supplyC, observation.returnAirC]
+    const safety = shield(validSafety({ nowMs: request.nowMs, context, temperatures, measuredAtMs, operatorApproved: request.operatorApproved ?? true, leaseUntilMs: request.leaseUntilMs, actuatorHealthy: !faults.actuatorNoFeedback && !faults.actuatorStuck, sourceProven: this.manifest.source.proven, wet: disturbance.condensationRisk, surfaceMinimum: observation.surfaceMinimumC, dewPoint: observation.dewPointC, requested: request.requested, previous: this.previous, sequence: request.sequence, lastSequence: this.lastSequence }))
+    const networkLost = faults.networkLoss
+    const applied = networkLost ? [0, 0] as Pair : driverAccept(safety, request.nowMs, this.lastSequence)
+    const accepted = !networkLost && safety.permitted && applied.every(value => Number.isFinite(value) && value >= 0)
+    if (accepted) { this.previous = applied; this.lastSequence = request.sequence }
+    this.output = applied
+    const activeFault = faults.active[0]
+    return { accepted, applied, state: accepted ? 'AUTO_CORRECT' : activeFault?.safeState ?? 'SAFE_FALLBACK', reason: networkLost ? 'NETWORK_LOSS' : safety.reason, observation, actuator: { requested: request.requested, applied, feedbackHealthy: !faults.actuatorNoFeedback && !faults.actuatorStuck, powerW: applied.reduce((sum, value) => sum + 8 * value ** 3, 0) }, disturbance, faults }
   }
+
+  tick(request: AbstractActuatorRequest, seconds = 1): LegacyVirtualDeviceResult {
+    const result = this.submit(request)
+    this.plant = stepPlant(this.plant, result.applied, result.disturbance, result.faults, seconds)
+    return result
+  }
+
+  currentOutput(): Pair { return [...this.output] }
 
   private nextSequence(): number {
     this.issuedSequence = this.issuedSequence === 0xffffffff ? 0 : this.issuedSequence + 1
     return this.issuedSequence
+  }
+
+  private disturbance(faults: FaultState): DisturbanceState {
+    return { sourceTemperatureC: this.manifest.source.temperatureC, doorOpen: this.manifest.door.open || faults.doorOpen, defrost: this.manifest.defrost.active || faults.defrost, humidity: faults.humidityHigh ? 0.95 : this.manifest.humidity.relativeHumidity, condensationRisk: this.manifest.condensation.wet || faults.condensationRisk || faults.humidityHigh }
   }
 }
 

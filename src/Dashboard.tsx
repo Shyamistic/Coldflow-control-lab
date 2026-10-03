@@ -60,7 +60,7 @@ export default function Dashboard() {
   }
   const snapshot = () => { try { composite().canvas.toBlob(blob => blob && download(blob, 'coldflow-concept-SIMULATION.png')); setMessage('Concept image exported.') } catch (error) { setMessage(String(error)) } }
   const record = () => {
-    if (recorder.current?.state === 'recording') { recorder.current.stop(); return }
+    if (recorder.current?.state === 'recording') { recorder.current.requestData(); setTimeout(() => { if (recorder.current?.state === 'recording') recorder.current.stop() }, 250); return }
     if (!activeLease) { setMessage('Simulated lease not approved.'); return }
     if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) { setMessage('Video capture unavailable in this browser.'); return }
     try {
@@ -75,9 +75,9 @@ export default function Dashboard() {
       const tick = () => { paint(); canvas.getContext('2d')!.getImageData(0, 0, 1, 1); track.requestFrame() }
       const animation = setInterval(tick, 33)
       media.ondataavailable = event => { if (event.data.size) chunks.push(event.data) }
-      media.onstop = () => { clearInterval(animation); stream.getTracks().forEach(track => track.stop()); canvas.remove(); if (recordingTimer.current) clearTimeout(recordingTimer.current); setRecording(false); const blob = new Blob(chunks, { type: mimeType }); if (blob.size < 1024) { setMessage('Video encoder produced no usable frames.'); return }; download(blob, 'coldflow-concept-SIMULATION.webm'); setMessage('Labeled concept video exported.'); }
+      media.onstop = () => { clearInterval(animation); if (recordingTimer.current) clearTimeout(recordingTimer.current); setTimeout(() => { const blob = new Blob(chunks, { type: mimeType }); stream.getTracks().forEach(track => track.stop()); canvas.remove(); setRecording(false); if (blob.size < 1024) { setMessage('Video encoder produced no usable frames.'); return }; download(blob, 'coldflow-concept-SIMULATION.webm'); setMessage('Labeled concept video exported.'); }, 100) }
       media.start(250); tick(); recorder.current = media; setRecording(true); setRunning(true)
-      recordingTimer.current = setTimeout(() => { if (media.state === 'recording') media.stop() }, 12000)
+      recordingTimer.current = setTimeout(() => { if (media.state === 'recording') media.stop() }, 30000)
     } catch (error) { setMessage(String(error)); setRecording(false) }
   }
   const explain = async () => {

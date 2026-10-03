@@ -1,5 +1,6 @@
 import { CONTEXTS, SIMULATION_COMPATIBILITY_VALUE, SIMULATION_PROFILE } from './contracts.ts'
 import type { CanonicalContext } from './contracts.ts'
+import { createLegacyPlant, stepLegacyPlant } from './simulator/plant.ts'
 
 export type Context = CanonicalContext
 export type Scenario = 'partial' | 'blocked' | 'capacity' | 'sensor' | 'actuator' | 'normal'
@@ -110,26 +111,11 @@ export function driverAccept(setpoint: Shielded, nowMs: number, lastSequence: nu
 }
 
 export function createPlant(scenario: Scenario, seed = 2026): Plant {
-  const variation = ((seed % 17) - 8) * 0.02
-  const balanced = scenario === 'normal'
-  const temperatures: ZoneVector = balanced ? [6.5, 6.7, 6.8, 6.4, 6.6, 6.7] : [10.5 + variation, 8.9, 7.4, 6.6, 7.1, 8.5]
-  const conductance: Pair[] = [[0.0035, 0.0004], [0.0018, 0.001], [0.0009, 0.0025], [0.0025, 0.0005], [0.0012, 0.0018], [0.0005, 0.0032]]
-  if (scenario === 'blocked') conductance[0] = [0.00001, 0.00001]
-  return { scenario, temperatures, supply: scenario === 'capacity' ? 9.4 : 3.5, returnAir: temperatures.reduce((sum, value) => sum + value, 0) / 6, seconds: 0, fanWh: 0, hotDegreeMinutes: 0, coldDegreeMinutes: 0, load: balanced ? [0.001, 0.001, 0.001, 0.001, 0.001, 0.001] : [0.006, 0.004, 0.003, 0.002, 0.003, 0.004], conductance }
+  return createLegacyPlant(scenario, seed)
 }
 
 export function stepPlant(plant: Plant, fans: Pair, seconds = 1): Plant {
-  if (!Number.isFinite(seconds) || seconds <= 0 || seconds > 5 || !fans.every(value => Number.isFinite(value) && value >= 0 && value <= 1)) throw new Error('Invalid integration step or actuator input')
-  const actual: Pair = plant.scenario === 'actuator' ? [0, 0] : fans
-  const fanPower = actual.reduce((sum, value) => sum + 8 * value ** 3, 0)
-  const temperatures = plant.temperatures.map((value, index) => {
-    const neighbour = plant.temperatures[(index + 1) % 6]
-    const base = plant.scenario === 'blocked' && index === 0 ? 0.0001 : 0.00055
-    const exchange = base + plant.conductance[index][0] * actual[0] + plant.conductance[index][1] * actual[1]
-    return value + seconds * (exchange * (plant.supply - value) + 0.0002 * (neighbour - value) + plant.load[index] + fanPower / 6 / 4000)
-  }) as ZoneVector
-  const mean = temperatures.reduce((sum, value) => sum + value, 0) / 6
-  return { ...plant, temperatures, returnAir: mean, seconds: plant.seconds + seconds, fanWh: plant.fanWh + fanPower * seconds / 3600, hotDegreeMinutes: plant.hotDegreeMinutes + temperatures.reduce((sum, value) => sum + Math.max(0, value - LIMITS.high), 0) * seconds / 60, coldDegreeMinutes: plant.coldDegreeMinutes + temperatures.reduce((sum, value) => sum + Math.max(0, LIMITS.low - value), 0) * seconds / 60 }
+  return stepLegacyPlant(plant, fans, seconds)
 }
 
 export function identifyAuthority(initial: Plant, configurationRevision = 1): Authority {

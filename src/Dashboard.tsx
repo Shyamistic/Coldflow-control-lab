@@ -89,9 +89,8 @@ export default function Dashboard() {
     const currentRecorder = recorder.current
     if (currentRecorder?.state === 'recording') {
       const stop = () => { if (currentRecorder.state === 'recording') currentRecorder.stop() }
-      const fallback = setTimeout(stop, 1000)
-      currentRecorder.addEventListener('dataavailable', () => { clearTimeout(fallback); stop() }, { once: true })
-      currentRecorder.requestData()
+      stop()
+      recordingTimer.current = setTimeout(stop, 1000)
       return
     }
     if (!activeLease) { setMessage('Simulated lease not approved.'); return }
@@ -114,7 +113,7 @@ export default function Dashboard() {
         retryRecorder.ondataavailable = event => { if (event.data.size) retryChunks.push(event.data) }
         retryRecorder.onstop = () => { clearInterval(retryAnimation); finish(new Blob(retryChunks, { type: mimeType }), retryStream) }
         retryRecorder.start(250); paint(); retryTrack.requestFrame()
-        setTimeout(() => { if (retryRecorder.state === 'recording') retryRecorder.stop() }, 1000)
+        setTimeout(() => { if (retryRecorder.state === 'recording') retryRecorder.stop() }, 3000)
       }
       const animation = setInterval(tick, 33)
       media.ondataavailable = event => { if (event.data.size) chunks.push(event.data) }

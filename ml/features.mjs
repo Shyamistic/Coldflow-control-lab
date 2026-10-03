@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto'
-import { independentPulseBlocks } from '../analysis/control.mjs'
 
 export const FEATURE_SCHEMA = 'coldflow.advisory-features.v1'
 export const FEATURE_NAMES = ['meanTemperatureC', 'spreadC', 'supplyC', 'maxSlopeCPerSecond']
@@ -15,10 +14,9 @@ function finiteFeatures(features) {
 
 export function featuresForGroup(group) {
   if (!group?.family || !group.runId || !Number.isInteger(group.seed)) throw new Error('Invalid evaluation group')
-  const count = Array.isArray(group.pulseBlocks) && group.pulseBlocks.length > 0 ? group.pulseBlocks.length : 3
-  const blocks = independentPulseBlocks({ family: group.family, runId: group.runId, seed: group.seed, count })
-  const frozen = blocks[0].frozenFeatures
-  if (!finiteFeatures(frozen)) throw new Error(`Invalid frozen features for ${group.groupId ?? group.runId}`)
+  if (group.canonicalSimulator?.source !== 'VERSIONED_PLANT_VIRTUAL_DEVICE') throw new Error('Evaluation group is not canonical simulator evidence')
+  const frozen = group.frozenFeatures ?? group.pulseBlocks?.[0]?.frozenFeatures
+  if (!finiteFeatures(frozen)) throw new Error(`Invalid canonical frozen features for ${group.groupId ?? group.runId}`)
   return {
     schema: FEATURE_SCHEMA,
     groupId: group.groupId,
@@ -26,6 +24,9 @@ export function featuresForGroup(group) {
     runId: group.runId,
     seed: group.seed,
     sourceSchema: FEATURE_SOURCE,
+    simulatorSource: group.canonicalSimulator.source,
+    simulatorVersion: group.canonicalSimulator.simulatorVersion,
+    manifestHashes: group.canonicalSimulator.manifestHashes,
     decisionSecond: frozen.decisionSecond,
     windowStartSecond: frozen.windowStartSecond,
     windowEndSecond: frozen.windowEndSecond,
@@ -37,6 +38,7 @@ export function featuresForGroup(group) {
 export function rowsFromEvaluation(report, { families = report?.configurationFamilies ?? [], seeds = report?.seeds ?? [] } = {}) {
   if (report?.schema !== 'coldflow.simulation-evaluation.v1') throw new Error('FEAT-005 evaluation report is required')
   if (report.provenance?.physicalHardwareAssembled !== false || report.provenance?.actuatorAuthority !== false) throw new Error('Evaluation report exceeds simulation-only boundary')
+  if (report.provenance?.source !== 'CANONICAL_VERSIONED_PLANT_VIRTUAL_DEVICE') throw new Error('Evaluation report is not canonical simulator evidence')
   if (report.protocol?.futureLeakage !== false || report.protocol?.frozenFeatures !== true || report.grouping?.groupOverlap !== false) throw new Error('Evaluation report does not prove frozen grouped inputs')
   const familySet = new Set(families)
   const seedSet = new Set(seeds)

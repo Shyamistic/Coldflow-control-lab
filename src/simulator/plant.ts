@@ -63,7 +63,7 @@ export function createPlant(manifest: ConfigurationManifest): PlantState {
     family: manifest.family, version: manifest.version, seed: manifest.seed, seconds: 0, airC: temperatures, thermalMassC: [...manifest.air.thermalMassC] as ZoneVector,
     supplyC: sourceTemperature, returnAirC: temperatures.reduce((sum, value) => sum + value, 0) / temperatures.length, humidity: manifest.humidity.relativeHumidity, dewPointC: manifest.condensation.dewPointC, surfaceMinimumC: manifest.condensation.surfaceMinimumC, condensationRisk: manifest.condensation.wet,
     sourceProven: manifest.source.proven, doorOpen: manifest.door.open, defrost: manifest.defrost.active, fanDuty: [0, 0], fanPowerW: 0, fanEnergyWh: 0, hotDegreeMinutes: 0, coldDegreeMinutes: 0,
-    loads: [...manifest.air.loads] as ZoneVector, conductance: [[0.0035, 0.0004], [0.0018, 0.001], [0.0009, 0.0025], [0.0025, 0.0005], [0.0012, 0.0018], [0.0005, 0.0032]],
+    loads: [...manifest.air.loads] as ZoneVector, conductance: manifest.air.actuatorConductance.map(([a, b]) => [a, b] as Pair),
   }
 }
 

@@ -1,0 +1,16 @@
+{
+  "schema": "coldflow.license-review.v1",
+  "policy": "Undeclared licenses are release-blocking unless an exact component/version decision is retained here.",
+  "decisions": [
+    {
+      "name": "webgl-constants",
+      "version": "1.1.1",
+      "declaredLicense": null,
+      "decision": "reviewed-approved",
+      "reviewer": "ColdFlow maintainers",
+      "reviewedAt": "2026-10-03",
+      "rationale": "npm SBOM metadata omits a license expression for this transitive simulation dependency; retain this explicit decision and re-review on version change before any redistribution.",
+      "evidence": "SBOM component inventory generated from the locked npm dependency tree"
+    }
+  ]
+}

@@ -4,7 +4,7 @@
 - **Artifact schema:** `coldflow.advisory-model.v1`
 - **Evidence:** SIMULATED synthetic simulator output only
 - **Generated:** 2026-01-01T00:00:00.000Z
-- **Artifact hash:** `1dea83aaec543c705b68329d1cbb9254068b3a102b2ffbf6d62370c8e47af399`
+- **Artifact hash:** `e02de10edac55fdbaf16e97120fc76527bfa4afb84db3b3bbcebf79258c95615`
 - **Feature manifest hash:** `a3ac1c00b4b1ca6887161b2de461da8bfb5a811fd60e5dc20043ff861770a086`
 - **Source report hash:** `63499f0c2d239632b2b1e6db814a22309e3798216f122e890c12c4d6f03f2aac`
 

@@ -20,6 +20,9 @@ playwright-report/
 artifacts/
 firmware/board.local.h
 
+# Private Kiro investigation and workflow artifacts
+.agents/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

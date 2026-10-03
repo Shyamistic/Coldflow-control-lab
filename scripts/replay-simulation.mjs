@@ -12,7 +12,7 @@ function options(argv) {
 }
 
 const flags = options(process.argv.slice(2))
-if (!flags.input || !flags.report) throw new Error('Usage: node scripts/replay-simulation.mjs --input artifacts/simulation/run.jsonl --report artifacts/simulation/replay-report.json')
-const result = await replayRun(flags.input)
+if (!flags.input || !flags.report) throw new Error('Usage: node scripts/replay-simulation.mjs --input artifacts/simulation/run.jsonl --report artifacts/simulation/replay-report.json [--anchor path]')
+const result = await replayRun(flags.input, flags.anchor ? { anchorPath: flags.anchor } : {})
 await writeFile(flags.report, `${JSON.stringify(result.report, null, 2)}\n`, 'utf8')
 console.log(JSON.stringify({ input: flags.input, report: flags.report, runHash: result.canonicalRunHash, reportHash: result.reportHash }, null, 2))

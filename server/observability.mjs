@@ -50,6 +50,10 @@ export function createObservability({ logger = console } = {}) {
     next()
   }
 
+  function requestContext(req, fields = {}) {
+    return { correlationId: req?.correlationId, ...fields }
+  }
+
   function metric(name, fields = {}) {
     record(name, { ...fields })
   }
@@ -65,5 +69,5 @@ export function createObservability({ logger = console } = {}) {
     return `${lines.join('\n')}\n`
   }
 
-  return { middleware, metric, snapshot, metricsText, provenance }
+  return { middleware, metric, requestContext, snapshot, metricsText, provenance }
 }

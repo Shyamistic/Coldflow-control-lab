@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import { FIRMWARE_PROFILE, SIMULATION_PROFILE } from '../src/contracts.ts'
 import { firmwareReason, runSafetyVector, VirtualDevice } from '../src/simulator/virtual-device.ts'
 import { driverAccept } from '../src/domain.ts'
 
@@ -23,6 +24,19 @@ test('virtual HIL covers stale/invalid inputs, lease, replay, interlock, condens
     assert.equal(result.permitted, false, name)
     assert.deepEqual(result.output, [0, 0], name)
   }
+})
+
+test('simulation and firmware numeric profiles are explicit and not conflated', () => {
+  assert.equal(SIMULATION_PROFILE.maximumDuty, 0.8)
+  assert.equal(SIMULATION_PROFILE.slewDuty, 0.1)
+  assert.equal(SIMULATION_PROFILE.leaseMs, 60000)
+  assert.equal(FIRMWARE_PROFILE.maximumDuty, 0.4)
+  assert.equal(FIRMWARE_PROFILE.slewDuty, 0.05)
+  assert.equal(FIRMWARE_PROFILE.leaseMs, 30000)
+  const simulationDevice = new VirtualDevice({ commissioned: true })
+  const accepted = simulationDevice.step({ sequence: 1, requested: [SIMULATION_PROFILE.maximumDuty, SIMULATION_PROFILE.maximumDuty] })
+  assert.equal(accepted.output[0], SIMULATION_PROFILE.slewDuty)
+  assert.ok(accepted.output[0] > FIRMWARE_PROFILE.slewDuty)
 })
 
 test('virtual HIL expires actuator output, preserves sequence across reboot, wraps fail-closed and ignores network commands', () => {

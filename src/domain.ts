@@ -7,7 +7,7 @@ import type { SafetyPair } from './safety.ts'
 import { createLegacyPlant, stepLegacyPlant } from './simulator/plant.ts'
 
 export type Context = CanonicalContext
-export type Scenario = 'partial' | 'blocked' | 'capacity' | 'sensor' | 'actuator' | 'normal'
+export type Scenario = 'partial' | 'blocked' | 'capacity' | 'sensor' | 'actuator' | 'normal' | 'correctable'
 export type Method = 'fixed-normal' | 'fixed-high' | 'expert-rule' | 'identified' | 'path-clear'
 export type Pair = SafetyPair
 export type ZoneVector = [number, number, number, number, number, number]
@@ -23,6 +23,7 @@ export const SCENARIOS: Record<Scenario, { name: string; description: string }> 
   sensor: { name: 'Stale sensor', description: 'A critical zone stops reporting; control must fall back.' },
   actuator: { name: 'Actuator fault', description: 'A fan command produces no valid actuator feedback.' },
   normal: { name: 'Balanced loading', description: 'No spatial excursion; extra airflow is unnecessary.' },
+  correctable: { name: 'Synthetic correctable excursion', description: 'A declared warm-zone excursion has bounded simulated airflow authority.' },
 }
 export interface Plant {
   scenario: Scenario

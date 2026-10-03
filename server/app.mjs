@@ -6,7 +6,7 @@ import { resolve } from 'node:path'
 import { SCENARIOS, runCanonicalExperiment } from '../src/simulator/public-experiment.ts'
 import { createObservability } from './observability.mjs'
 
-const scenario = z.enum(['partial', 'blocked', 'capacity', 'sensor', 'actuator', 'normal'])
+const scenario = z.enum(['partial', 'blocked', 'capacity', 'sensor', 'actuator', 'normal', 'correctable'])
 const method = z.enum(['identified', 'fixed-normal', 'fixed-high', 'expert-rule', 'path-clear'])
 const requestSchema = z.object({ scenario, method, duration: z.number().int().min(1).max(600).default(600), seed: z.number().int().min(1).max(100000).default(2026) }).strict()
 const explanationSchema = z.object({ scenario, method, frame: z.number().int().min(0).max(120).default(0) }).strict()
@@ -38,7 +38,7 @@ export function createApp({ serveStatic = true, logger = console } = {}) {
     const provenance = eventProvenance(req, result, parsed.data)
     observability.metric('simulation_run', { operation: 'experiment', scenario: parsed.data.scenario, ...provenance })
     if (result.samples.some(sample => sample.state === 'ABSTAIN')) observability.metric('abstention', { ...provenance })
-    if (parsed.data.scenario !== 'normal') observability.metric('fault', { scenario: parsed.data.scenario, ...provenance })
+    if (!['normal', 'correctable'].includes(parsed.data.scenario)) observability.metric('fault', { scenario: parsed.data.scenario, ...provenance })
     const serialized = JSON.stringify(result)
     res.json({ experiment: result, sha256: createHash('sha256').update(serialized).digest('hex'), hashEncoding: 'UTF-8 JSON.stringify(experiment); exact property order' })
   })

@@ -1,7 +1,7 @@
 import { SIMULATION_COMPATIBILITY_VALUE } from '../contracts.ts'
 import { canonicalHash, configurationForScenario } from './configuration.ts'
 import { VirtualDevice } from './virtual-device.ts'
-import type { ConfigurationManifest } from './configuration.ts'
+import type { ConfigurationFamily, ConfigurationManifest } from './configuration.ts'
 import type { PlantState, Observation } from './plant.ts'
 import type { Authority, Decision, Experiment, Method, Sample, Scenario, ZoneVector } from '../domain.ts'
 
@@ -12,6 +12,7 @@ export const SCENARIOS: Record<Scenario, { name: string; description: string }> 
   sensor: { name: 'Stale sensor', description: 'A critical zone stops reporting; control must fall back.' },
   actuator: { name: 'Actuator fault', description: 'A fan command produces no valid actuator feedback.' },
   normal: { name: 'Balanced loading', description: 'No spatial excursion; extra airflow is unnecessary.' },
+  correctable: { name: 'Synthetic correctable excursion', description: 'A declared warm-zone excursion has bounded simulated airflow authority.' },
 }
 
 export interface CanonicalProvenance {
@@ -23,6 +24,7 @@ export interface CanonicalProvenance {
   manifestHash: string
   configurationHash: string
   outputHash: string
+  replayHash: string
   hardwareConnected: false
   directActuatorWrite: false
 }
@@ -31,10 +33,19 @@ export type PublicExperiment = Experiment & {
   manifestHash: string
   configurationHash: string
   outputHash: string
+  replayHash: string
   provenance: CanonicalProvenance
 }
 
 const protocol = 'cf-sim-v1; versioned configuration manifest; deterministic VirtualDevice ticks; synthetic coefficients; not physical evidence'
+
+export function configurationFamilyForScenario(scenario: Scenario): ConfigurationFamily {
+  return scenario === 'normal' ? 'normal' : scenario === 'capacity' ? 'capacity' : scenario === 'correctable' ? 'correctable' : scenario === 'sensor' || scenario === 'actuator' ? 'fault-matrix' : 'obstructed'
+}
+
+export const scenarioForFamily: Record<ConfigurationFamily, Scenario> = {
+  normal: 'normal', obstructed: 'partial', capacity: 'capacity', correctable: 'correctable', 'fault-matrix': 'sensor',
+}
 const dutyFor = (method: Method, decision: Decision, warm: boolean): [number, number] => {
   if (method === 'identified') return decision === 'AUTO_CORRECT' ? [0.4, 0.4] : [0, 0]
   if (method === 'fixed-high') return [0.8, 0.8]
@@ -82,8 +93,9 @@ export function runCanonicalExperiment(scenario: Scenario, method: Method, durat
   const identity = { evidenceClass: SIMULATION_COMPATIBILITY_VALUE, scenario, method, samples, initial, authority, seed, protocol }
   const configurationHash = `fnv1a4:${canonicalHash(manifest)}`
   const outputHash = `fnv1a4:${canonicalHash(identity)}`
-  const provenance: CanonicalProvenance = { evidenceClass: 'SIMULATED', executionClass: 'SIMULATED', simulatorVersion: 'cf-sim-v1', executionPath: 'VERSIONED_PLANT_VIRTUAL_DEVICE', configurationFamily: manifest.family, manifestHash: manifest.manifestHash, configurationHash, outputHash, hardwareConnected: false, directActuatorWrite: false }
-  return { ...identity, manifestHash: manifest.manifestHash, configurationHash, outputHash, provenance }
+  const replayHash = `fnv1a4:${canonicalHash({ simulatorVersion: 'cf-sim-v1', manifestHash: manifest.manifestHash, configurationHash, outputHash, seed, scenario, method })}`
+  const provenance: CanonicalProvenance = { evidenceClass: 'SIMULATED', executionClass: 'SIMULATED', simulatorVersion: 'cf-sim-v1', executionPath: 'VERSIONED_PLANT_VIRTUAL_DEVICE', configurationFamily: manifest.family, manifestHash: manifest.manifestHash, configurationHash, outputHash, replayHash, hardwareConnected: false, directActuatorWrite: false }
+  return { ...identity, manifestHash: manifest.manifestHash, configurationHash, outputHash, replayHash, provenance }
 }
 
 export function exportCsv(experiment: PublicExperiment): string {

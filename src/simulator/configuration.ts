@@ -74,7 +74,7 @@ export function configurationForFamily(family: ConfigurationFamily, seed = CONFI
 }
 
 export function configurationForScenario(scenario: Scenario, seed = 2026): ConfigurationManifest {
-  const family: ConfigurationFamily = scenario === 'normal' ? 'normal' : scenario === 'capacity' ? 'capacity' : scenario === 'sensor' || scenario === 'actuator' ? 'fault-matrix' : 'obstructed'
+  const family: ConfigurationFamily = scenario === 'normal' ? 'normal' : scenario === 'capacity' ? 'capacity' : scenario === 'correctable' ? 'correctable' : scenario === 'sensor' || scenario === 'actuator' ? 'fault-matrix' : 'obstructed'
   const manifest = configurationForFamily(family, seed)
   if (scenario === 'sensor') return manifestWithSeed({ ...manifest, faults: [{ name: 'SENSOR_STALE', startSeconds: 61, endSeconds: 3601, reason: 'STALE_CRITICAL_INPUT', safeState: 'SAFE_FALLBACK', safeOutput: 'STALE_OBSERVATION' }] }, seed)
   if (scenario === 'actuator') return manifestWithSeed({ ...manifest, faults: [{ name: 'ACTUATOR_NO_FEEDBACK', startSeconds: 0, endSeconds: 3601, reason: 'ACTUATOR_FEEDBACK_FAULT', safeState: 'SAFE_FALLBACK', safeOutput: 'ZERO_COMMAND' }] }, seed)

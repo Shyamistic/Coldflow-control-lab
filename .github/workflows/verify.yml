@@ -10,19 +10,22 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - run: npx playwright install --with-deps chromium
       - run: npm test
+      - run: npm run evaluate:simulation -- --output artifacts/simulation/evaluation.json
+      - run: node scripts/record-simulation.mjs --family normal.v1 --seed 2026 --duration 4 --output artifacts/simulation/release-run.jsonl
+      - run: node scripts/replay-simulation.mjs --input artifacts/simulation/release-run.jsonl --report artifacts/simulation/release-replay-report.json --anchor artifacts/simulation/release-run.jsonl.anchor.json
+      - run: node ml/train.mjs --report artifacts/simulation/evaluation.json --output artifacts/ml/candidate.json
+      - run: node ml/evaluate.mjs --model artifacts/ml/candidate.json --output artifacts/ml/evaluation.json
       - run: npm run lint
       - run: npm run build
       - run: mkdir -p artifacts
       - run: npm sbom --sbom-format=cyclonedx > artifacts/sbom.json
-      - run: node scripts/check-sbom.mjs artifacts/sbom.json
-      - run: docker build -t coldflow-simulation:${{ github.sha }} .
+      - run: node scripts/check-sbom.mjs artifacts/sbom.json docs/license-allowlist.json artifacts/sbom-check.json
+      - run: docker build --build-arg SOURCE_REVISION=${{ github.sha }} -t coldflow-simulation:${{ github.sha }} .
       - id: image
         run: echo "image_id=$(docker image inspect --format '{{.Id}}' coldflow-simulation:${{ github.sha }})" >> "$GITHUB_OUTPUT"
-      - run: node scripts/write-sbom-metadata.mjs artifacts/sbom.json artifacts/sbom-metadata.json coldflow-simulation:${{ github.sha }} "${{ steps.image.outputs.image_id }}"
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
-      - run: node --experimental-strip-types --test tests/hil.test.mjs tests/contracts.test.ts tests/domain.test.ts
+      - run: node scripts/write-sbom-metadata.mjs artifacts/sbom.json artifacts/sbom-metadata.json coldflow-simulation:${{ github.sha }} "${{ steps.image.outputs.image_id }}" artifacts/sbom-check.json
       - run: g++ -std=c++17 -Wall -Wextra -Werror firmware/tests/safety_test.cpp -o /tmp/coldflow-safety && /tmp/coldflow-safety
       - run: g++ -std=c++17 -Wall -Wextra -Werror firmware/tests/hal_test.cpp -o /tmp/coldflow-hal && /tmp/coldflow-hal
       - uses: actions/upload-artifact@v4

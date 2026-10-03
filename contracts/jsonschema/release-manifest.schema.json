@@ -1,0 +1,162 @@
+{
+  "title": "ColdFlow external simulation release evidence manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schemaVersion", "generatedAt", "source", "commands", "evidence"],
+  "properties": {
+    "schema": { "const": "coldflow.release-manifest.v1" },
+    "schemaVersion": { "const": "1.0" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "packageLockHash"],
+      "properties": {
+        "commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "packageLockHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "commands": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["test", "lint", "build", "evaluation", "replay", "sbom", "docker"],
+      "properties": {
+        "test": { "$ref": "#/$defs/commandResult" },
+        "lint": { "$ref": "#/$defs/commandResult" },
+        "build": { "$ref": "#/$defs/commandResult" },
+        "evaluation": { "$ref": "#/$defs/commandResult" },
+        "replay": { "$ref": "#/$defs/commandResult" },
+        "sbom": { "$ref": "#/$defs/commandResult" },
+        "docker": { "$ref": "#/$defs/commandResult" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evaluation", "ml", "replay", "sbom", "image", "deployment"],
+      "properties": {
+        "evaluation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256", "reportHash"],
+          "properties": {
+            "path": { "type": "string", "minLength": 1 },
+            "sha256": { "$ref": "#/$defs/hash" },
+            "reportHash": { "$ref": "#/$defs/hash" }
+          }
+        },
+        "ml": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["decision", "artifact"],
+          "properties": {
+            "decision": { "$ref": "#/$defs/fileEvidence" },
+            "artifact": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "sha256", "artifactHash"],
+              "properties": {
+                "path": { "type": "string", "minLength": 1 },
+                "sha256": { "$ref": "#/$defs/hash" },
+                "artifactHash": { "$ref": "#/$defs/hash" }
+              }
+            }
+          }
+        },
+        "replay": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["manifest", "report", "trustedAnchor"],
+          "properties": {
+            "manifest": { "$ref": "#/$defs/fileEvidence" },
+            "report": { "$ref": "#/$defs/fileEvidence" },
+            "trustedAnchor": { "$ref": "#/$defs/fileEvidence" }
+          }
+        },
+        "sbom": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256", "serialNumber", "componentCount", "license"],
+          "properties": {
+            "path": { "type": "string", "minLength": 1 },
+            "sha256": { "$ref": "#/$defs/hash" },
+            "serialNumber": { "type": "string", "minLength": 1 },
+            "componentCount": { "type": "integer", "minimum": 1 },
+            "license": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["status", "resultPath", "resultHash"],
+              "properties": {
+                "status": { "const": "passed" },
+                "resultPath": { "type": "string", "minLength": 1 },
+                "resultHash": { "$ref": "#/$defs/hash" }
+              }
+            }
+          }
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reference", "digest", "sourceRevision"],
+          "properties": {
+            "reference": { "type": "string", "minLength": 1 },
+            "digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+            "sourceRevision": { "type": "string", "pattern": "^[a-f0-9]{40}$" }
+          }
+        },
+        "deployment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["service", "revision", "verifiedAt", "routes"],
+          "properties": {
+            "service": { "type": "string", "minLength": 1 },
+            "revision": { "type": "string", "minLength": 1 },
+            "verifiedAt": { "type": "string", "format": "date-time" },
+            "routes": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["live", "ready", "health", "metrics", "experiments"],
+              "properties": {
+                "live": { "$ref": "#/$defs/routeCheck" },
+                "ready": { "$ref": "#/$defs/routeCheck" },
+                "health": { "$ref": "#/$defs/routeCheck" },
+                "metrics": { "$ref": "#/$defs/routeCheck" },
+                "experiments": { "$ref": "#/$defs/routeCheck" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "fileEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": { "path": { "type": "string", "minLength": 1 }, "sha256": { "$ref": "#/$defs/hash" } }
+    },
+    "commandResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "status", "exitCode", "finishedAt"],
+      "properties": {
+        "command": { "type": "string", "minLength": 1 },
+        "status": { "const": "passed" },
+        "exitCode": { "const": 0 },
+        "finishedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "routeCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "statusCode", "verifiedAt"],
+      "properties": {
+        "status": { "const": "passed" },
+        "statusCode": { "type": "integer", "minimum": 200, "maximum": 299 },
+        "verifiedAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

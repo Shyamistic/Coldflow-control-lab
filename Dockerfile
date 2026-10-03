@@ -1,10 +1,13 @@
 FROM node:24-alpine AS build
+ARG SOURCE_REVISION=unresolved
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
 FROM node:24-alpine
+ARG SOURCE_REVISION=unresolved
+LABEL org.opencontainers.image.revision=$SOURCE_REVISION
 ENV NODE_ENV=production PORT=8080 ENABLE_VERTEX=false
 WORKDIR /app
 COPY package*.json ./

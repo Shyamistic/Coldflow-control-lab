@@ -1,0 +1,1 @@
+{"schema":"coldflow.control-envelope.v1","schemaVersion":"1.0","bootId":"sim-2026-01","sequence":2,"issuedAtMs":1200,"expiresAtMs":1000,"context":"NORMAL","operatorApproved":true,"interlockClosed":true,"sourceProven":true,"actuatorHealthy":true,"requestedFans":[0.2,0.2],"previousFans":[0.1,0.1],"authority":"MODEL_DIRECT"}

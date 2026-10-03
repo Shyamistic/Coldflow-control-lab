@@ -17,3 +17,7 @@ TRANSFER,sealed configuration families second room,CF15,docs/model-validation.md
 SECURITY,OIDC tenancy RBAC RLS audit,CF16,docs/protocols.md,post G3 production,deliberately deferred public synthetic service only,unassigned
 REMOTE,signed leases MQTT OTA PLC adapters,CF17,docs/protocols.md,post physical gates,contract drafts only unimplemented,unassigned
 AI,explanation isolated from control,CF18,tests/api.test.mjs,competition package,optional Vertex disabled public route deterministic,unassigned
+CONTRACTS,versioned telemetry quality control provenance labels,FEAT-001,tests/contracts.test.ts,G1_AUTHORITY,fixture and transition tested physical evidence unverified,unassigned
+STATES,canonical operating states and reject-to-safe transitions,FEAT-001,tests/contracts.test.ts,G2_ABSTENTION,software tested no actuator authority,unassigned
+VECTORS,cross-language generated firmware safety vectors,FEAT-001,firmware/include/generated/safety_vectors.hpp,G0_SAFE_PLANT,generation checked native/PlatformIO toolchain evidence required,unassigned
+PROVENANCE,immutable evidence class and G0-G6 boundary,FEAT-001,docs/provenance.md,all gates,simulation-only documentation,unassigned

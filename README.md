@@ -2,6 +2,12 @@
 
 Competition software demonstrator: six-zone air-temperature simulation, bounded secondary-airflow decisions, conservative abstention, comparisons and a Three.js chamber concept. **Not live hardware, product-core measurement, certified safety equipment, field validation or a measured energy/food-loss result.** Physical evidence gates G0-G6 remain unpassed.
 
+## Evidence and commissioning boundary
+
+The application preserves the public `SIMULATION` evidence value for API, CSV and JSON compatibility. New contracts use the explicit classes `SIMULATED`, `REPLAY`, `LIVE_TABLETOP` and `FIELD_DATA`; these are provenance claims, not interchangeable quality grades. No current artifact is `FIELD_DATA`, and no simulated or replay result is a physical validation result. Outcome labels are advisory (`CORRECTABLE`, `RESTACK_REQUIRED`, `CAPACITY_OR_EQUIPMENT_FAULT`, `SENSOR_OR_EVENT_ARTIFACT`, `UNKNOWN` or `ABSTAIN`); the model never has actuator authority and invalid state transitions reject to `SAFE_FALLBACK`.
+
+Physical readiness remains bounded by gates G0-G6: G0 safe plant and hardwired protection, G1 authority, G2 abstention, G3 tabletop effect, G4 customer acceptance, G5 field effect and G6 repeatability/transfer. The current repository is simulation-only, has no assembled hardware, and has passed none of these physical gates. `RESTACK_REQUIRED` is a contract state for a future qualified workflow, not a diagnosis emitted by the current blocked-path simulation. See [docs/provenance.md](docs/provenance.md) for the evidence rules.
+
 ## Public Links
 
 - [Deployed simulation dashboard](https://coldflow-demo-749096933589.asia-south1.run.app)

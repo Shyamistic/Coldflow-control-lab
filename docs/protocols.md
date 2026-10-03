@@ -1,6 +1,10 @@
 # Interface Contracts v1
 
-Implemented scope: public simulation REST, local uncommissioned serial output. Everything marked FUTURE is a specification only and conveys no integration claim.
+Implemented scope: public simulation REST, local uncommissioned serial output, and versioned offline contract fixtures. Everything marked FUTURE is a specification only and conveys no integration claim. Contract records distinguish `SIMULATED`, `REPLAY`, `LIVE_TABLETOP` and `FIELD_DATA`; public REST/CSV compatibility continues to expose `SIMULATION`.
+
+All telemetry carries boot identity, monotonic sequence, measurement time, quality/uncertainty and provenance. Control envelopes expire, require the deterministic safety shield, and reject model-direct authority. Unknown versions, contradictory timestamps/authority and malformed quality/label/state data fail closed. The canonical states are `SAFE_BOOT`, `SELF_TEST`, `SAFE_FIXED`, `OBSERVE`, `IDENTIFYING`, `AUTO_CORRECT`, `ABSTAIN`, `INVESTIGATE_EQUIPMENT`, `RESTACK_REQUIRED`, `SAFE_FALLBACK` and `MAINTENANCE`; an unlisted transition goes to `SAFE_FALLBACK`.
+
+These are software contracts, not a physical ICD or a passed G0-G6 gate. No contract enables a driver, establishes field evidence, or authorizes restacking.
 
 ## Device serial v1 - implemented producer
 

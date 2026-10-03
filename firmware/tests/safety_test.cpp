@@ -1,6 +1,7 @@
 #include "../include/safety.hpp"
 #include <cassert>
 #include <iostream>
+#include <string>
 
 coldflow::Input validInput() {
   coldflow::Input input;
@@ -14,6 +15,10 @@ coldflow::Input validInput() {
 int main() {
   auto input = validInput(); auto point = coldflow::authorize(input);
   assert(point.permitted && point.fans[0] == 0.05f);
+  assert(coldflow::generated::safetyVectorCount == 12);
+  assert(std::string(coldflow::reasonName(point.reason)) == coldflow::generated::safetyVectors[0].expectedReason);
+  input.commissioned = false;
+  assert(std::string(coldflow::reasonName(coldflow::authorize(input).reason)) == coldflow::generated::safetyVectors[1].expectedReason);
   for (auto context : {coldflow::Context::DoorOpen, coldflow::Context::Defrost, coldflow::Context::Drip, coldflow::Context::FanDelay, coldflow::Context::Recovery, coldflow::Context::Unknown}) { input = validInput(); input.context = context; assert(!coldflow::authorize(input).permitted); }
   input = validInput(); input.commissioned = false; assert(!coldflow::authorize(input).permitted);
   input = validInput(); input.now = 31000; input.measured = 31000; assert(coldflow::authorize(input).reason == coldflow::Reason::Lease);

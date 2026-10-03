@@ -1,6 +1,12 @@
 # Model and Validation v1
 
-Evidence class: SIMULATION. No physical gate passed. Date: 2 October 2026.
+Evidence class: `SIMULATED` internally; public exports retain the compatibility value `SIMULATION`. No physical gate passed. Date: 2 October 2026.
+
+## Evidence taxonomy and G0-G6 boundary
+
+`SIMULATED` is deterministic synthetic plant output, `REPLAY` is recorded output replayed without fresh measurement, `LIVE_TABLETOP` is an observed guarded tabletop run, and `FIELD_DATA` is site data collected only after qualified commissioning. Provenance, configuration, calibration status, labels and hashes travel with each new contract record. None of these labels alone proves product-core, food, energy, safety or customer outcomes.
+
+The physical boundary is explicit: G0 safe plant and independent hazardous-energy removal; G1 authority; G2 abstention; G3 tabletop effect; G4 customer acceptance; G5 field effect; G6 repeatability and transfer. This software currently supports only deterministic simulation and fail-closed contract testing. `RESTACK_REQUIRED` and `CAPACITY_OR_EQUIPMENT_FAULT` are future evidence labels; the current simulator does not infer restacking from no response.
 
 ## Mathematical scope
 

@@ -1,10 +1,14 @@
-export type Context = 'NORMAL' | 'DOOR_OPEN' | 'DEFROST' | 'DRIP' | 'FAN_DELAY' | 'POST_EVENT_RECOVERY' | 'SOURCE_UNKNOWN'
+import { CONTEXTS, SIMULATION_COMPATIBILITY_VALUE, SIMULATION_PROFILE } from './contracts.ts'
+import type { CanonicalContext } from './contracts.ts'
+
+export type Context = CanonicalContext
 export type Scenario = 'partial' | 'blocked' | 'capacity' | 'sensor' | 'actuator' | 'normal'
 export type Method = 'fixed-normal' | 'fixed-high' | 'expert-rule' | 'identified' | 'path-clear'
 export type Pair = [number, number]
 export type ZoneVector = [number, number, number, number, number, number]
 export type Decision = 'OBSERVE' | 'IDENTIFYING' | 'AUTO_CORRECT' | 'ABSTAIN' | 'INVESTIGATE_EQUIPMENT' | 'SAFE_FALLBACK' | 'MANUAL_BOUNDED'
-export const LIMITS = { low: 4, high: 8, maximum: 0.8, slew: 0.1, freshnessMs: 2000, leaseMs: 60000, shieldMs: 200, horizonSeconds: 120 } as const
+export const LIMITS = { low: SIMULATION_PROFILE.lowTemperatureC, high: SIMULATION_PROFILE.highTemperatureC, maximum: SIMULATION_PROFILE.maximumDuty, slew: SIMULATION_PROFILE.slewDuty, freshnessMs: SIMULATION_PROFILE.freshnessMs, leaseMs: SIMULATION_PROFILE.leaseMs, shieldMs: SIMULATION_PROFILE.shieldMs, horizonSeconds: SIMULATION_PROFILE.horizonSeconds } as const
+export const CANONICAL_CONTEXTS = CONTEXTS
 export const SCENARIOS: Record<Scenario, { name: string; description: string }> = {
   partial: { name: 'Partial obstruction', description: 'A changing load diverts airflow from the back-left zone.' },
   blocked: { name: 'Full obstruction', description: 'The affected zone has almost no added-actuator authority.' },
@@ -187,11 +191,11 @@ export function runExperiment(scenario: Scenario, method: Method, duration = 600
     previous = fans
     if (seconds < duration) plant = stepPlant(plant, fans)
   }
-  return { evidenceClass: 'SIMULATION', scenario, method, samples, initial, authority, seed, protocol: 'cf-simulation-v1; matched start; 1s Euler; 120s cloned pulse calibration; synthetic lease renewal; fixed assumptions; not independent physical evidence' }
+  return { evidenceClass: SIMULATION_COMPATIBILITY_VALUE, scenario, method, samples, initial, authority, seed, protocol: 'cf-simulation-v1; matched start; 1s Euler; 120s cloned pulse calibration; synthetic lease renewal; fixed assumptions; not independent physical evidence' }
 }
 
 export function exportCsv(experiment: Experiment): string {
   const rows = ['evidence_class,scenario,method,seed,seconds,z1_c,z2_c,z3_c,z4_c,z5_c,z6_c,supply_c,return_c,fan_a,fan_b,fan_wh,hdt_k_min,cdt_k_min,spread_k,state,reason']
-  for (const sample of experiment.samples) rows.push(['SIMULATION', experiment.scenario, experiment.method, experiment.seed, sample.seconds, ...sample.temperatures, sample.supply, sample.returnAir, ...sample.fans, sample.fanWh, sample.hdt, sample.cdt, sample.spread, sample.state, sample.reason].join(','))
+  for (const sample of experiment.samples) rows.push([SIMULATION_COMPATIBILITY_VALUE, experiment.scenario, experiment.method, experiment.seed, sample.seconds, ...sample.temperatures, sample.supply, sample.returnAir, ...sample.fans, sample.fanWh, sample.hdt, sample.cdt, sample.spread, sample.state, sample.reason].join(','))
   return rows.join('\n')
 }

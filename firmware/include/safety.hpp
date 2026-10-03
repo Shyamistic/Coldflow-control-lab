@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <algorithm>
+#include "generated/safety_vectors.hpp"
 
 namespace coldflow {
 enum class Context { Normal, DoorOpen, Defrost, Drip, FanDelay, Recovery, Unknown };
@@ -41,21 +42,21 @@ inline Setpoint authorize(const Input& input) {
   output.sequence = input.sequence;
   output.issued = input.now;
   if (!input.commissioned) output.reason = Reason::Uncommissioned;
-  else if (uint32_t(input.now - input.measured) > 2000) output.reason = Reason::Stale;
+  else if (uint32_t(input.now - input.measured) > generated::freshnessMs) output.reason = Reason::Stale;
   else if (!input.sensorsValid || !std::all_of(input.temperatures.begin(), input.temperatures.end(), [](float value) { return std::isfinite(value) && value > -30 && value < 60; })) output.reason = Reason::Sensor;
   else if (!input.interlock) output.reason = Reason::Interlock;
   else if (input.context != Context::Normal || !input.sourceProven) output.reason = Reason::ContextInhibit;
   else if (!input.actuatorHealthy) output.reason = Reason::Actuator;
-  else if (input.leaseDuration == 0 || input.leaseDuration > 30000 || uint32_t(input.now - input.leaseIssued) >= input.leaseDuration) output.reason = Reason::Lease;
+  else if (input.leaseDuration == 0 || input.leaseDuration > generated::leaseMs || uint32_t(input.now - input.leaseIssued) >= input.leaseDuration) output.reason = Reason::Lease;
   else if (input.sequence == 0 || input.sequence <= input.lastSequence) output.reason = Reason::Replay;
   else if (input.wet || !input.surfaceObservable || !std::isfinite(input.surfaceMinimum) || !std::isfinite(input.dewPoint) || !std::isfinite(input.uncertainty) || input.uncertainty < 0 || input.surfaceMinimum - input.dewPoint < std::max(2.0f, input.uncertainty)) output.reason = Reason::Condensation;
-  else if (std::any_of(input.temperatures.begin(), input.temperatures.begin() + 6, [](float value) { return value < 4; })) output.reason = Reason::LowLimit;
-  else if (!std::all_of(input.requested.begin(), input.requested.end(), [](float value) { return std::isfinite(value) && value >= 0 && value <= 0.4f; }) || !std::all_of(input.previous.begin(), input.previous.end(), [](float value) { return std::isfinite(value) && value >= 0 && value <= 0.4f; })) output.reason = Reason::Range;
-  else { output.reason = Reason::Approved; output.permitted = true; for (size_t index = 0; index < 2; index++) output.fans[index] = std::min(input.requested[index], input.previous[index] + 0.05f); }
+  else if (std::any_of(input.temperatures.begin(), input.temperatures.begin() + 6, [](float value) { return value < generated::lowTemperatureC; })) output.reason = Reason::LowLimit;
+  else if (!std::all_of(input.requested.begin(), input.requested.end(), [](float value) { return std::isfinite(value) && value >= 0 && value <= generated::maximumDuty; }) || !std::all_of(input.previous.begin(), input.previous.end(), [](float value) { return std::isfinite(value) && value >= 0 && value <= generated::maximumDuty; })) output.reason = Reason::Range;
+  else { output.reason = Reason::Approved; output.permitted = true; for (size_t index = 0; index < 2; index++) output.fans[index] = std::min(input.requested[index], input.previous[index] + generated::slewDuty); }
   return output;
 }
 inline std::array<float, 2> driverAccept(const Setpoint& point, uint32_t now, uint32_t lastSequence) {
-  if (!point.permitted || point.sequence <= lastSequence || uint32_t(now - point.issued) >= 200 || !std::all_of(point.fans.begin(), point.fans.end(), [](float value) { return std::isfinite(value) && value >= 0 && value <= 0.4f; })) return {0, 0};
+  if (!point.permitted || point.sequence <= lastSequence || uint32_t(now - point.issued) >= generated::shieldMs || !std::all_of(point.fans.begin(), point.fans.end(), [](float value) { return std::isfinite(value) && value >= 0 && value <= generated::maximumDuty; })) return {0, 0};
   return point.fans;
 }
 class Driver {
@@ -69,7 +70,7 @@ public:
     if (point.sequence > lastSequence) lastSequence = point.sequence;
   }
   std::array<float, 2> output(uint32_t now) const {
-    return uint32_t(now - active.issued) < 200 ? accepted : std::array<float, 2>{0, 0};
+    return uint32_t(now - active.issued) < generated::shieldMs ? accepted : std::array<float, 2>{0, 0};
   }
 };
 inline const char* reasonName(Reason reason) {

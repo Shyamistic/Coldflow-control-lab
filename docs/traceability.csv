@@ -21,3 +21,8 @@ CONTRACTS,versioned telemetry quality control provenance labels,FEAT-001,tests/c
 STATES,canonical operating states and reject-to-safe transitions,FEAT-001,tests/contracts.test.ts,G2_ABSTENTION,software tested no actuator authority,unassigned
 VECTORS,cross-language generated firmware safety vectors,FEAT-001,firmware/include/generated/safety_vectors.hpp,G0_SAFE_PLANT,generation checked native/PlatformIO toolchain evidence required,unassigned
 PROVENANCE,immutable evidence class and G0-G6 boundary,FEAT-001,docs/provenance.md,all gates,simulation-only documentation,unassigned
+PULSE-BLOCKS,independent pulse blocks and stable-window guards,FEAT-005,tests/control-validation.test.mjs,G1_AUTHORITY,deterministic synthetic validation,unassigned
+BASELINE-GROUPING,grouped no-ML comparator evaluation and frozen features,FEAT-005,tests/evaluation.test.mjs,G1_AUTHORITY,synthetic holdout only,unassigned
+CONSTRAINTS,trajectory/reachability/energy/condensation/timing constraints,FEAT-005,analysis/constraints.mjs,G2_ABSTENTION,synthetic policy checks,unassigned
+OOD-ABSTENTION,OOD detection and machine-readable safe abstention,FEAT-005,artifacts/simulation/evaluation.json,G2_ABSTENTION,synthetic report; no actuator authority,unassigned
+FAULT-COVERAGE,named safe outcome for injected fault matrix,FEAT-005,artifacts/simulation/evaluation.json,G2_ABSTENTION,synthetic fault coverage only,unassigned

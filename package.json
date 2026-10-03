@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "node --experimental-strip-types --test tests/domain.test.ts tests/api.test.mjs",
+    "evaluate:simulation": "node scripts/evaluate-simulation.mjs",
     "test:e2e": "playwright test",
     "start": "node --experimental-strip-types server/index.mjs",
     "preview": "vite preview"

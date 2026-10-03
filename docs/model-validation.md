@@ -43,6 +43,14 @@ For a full refrigerator, added fan power inside the room also increases thermal 
 - Browser tests check real nonblank pixels, moving scene, phone/desktop layout and exported media.
 - Native firmware tests cover context, condensation, data quality, bounded motion, lease, driver expiry/replay and monotonic wrap.
 
+## Synthetic evaluation protocol (FEAT-005)
+
+`node scripts/evaluate-simulation.mjs --families normal.v1,obstructed.v1,capacity.v1 --seeds 101,202,303,404 --output artifacts/simulation/evaluation.json` produces the machine-readable `coldflow.simulation-evaluation.v1` report. It uses independent 12-second pulse blocks with a five-second stable-window guard, frozen features ending at the decision time, and configuration-family/run/seed grouped holdouts. No pulse block or feature window is reused across groups, and the report explicitly records temporal-leakage and future-feature checks.
+
+The fixed-normal, fixed-high, expert-rule, identified and path-clear comparators are no-ML baselines. Their reports include pulse gain, delay, sign, rank, conditioning, uncertainty/confidence, trajectory/reachability, energy, temperature, condensation, timing/expiry, OOD, abstention and fault-coverage metrics. Constraints are diagnostic evidence only: a failed or out-of-distribution case emits an explicit `ABSTAIN` with zero safe output. The report records all failed and inconclusive cases rather than hiding them in aggregate means. The deterministic safety shield remains authoritative; comparator/advisory output has no direct actuator write path.
+
+The injected door, defrost, inadequate-source, sensor, condensation, interlock, actuator and network cases each carry a named safe state and reason. `RESTACK_REQUIRED` may appear only as a `SIMULATED` synthetic label in this evaluation; it is not a physical diagnosis or a command. No hardware is assembled and no result is field evidence.
+
 ## Required physical validation, not completed
 
 First qualify guarded SELV plant and acquisition, then repeated randomized pulses, source/actuator checks and matched path-clear intervention. Freeze family-level holdouts, recipe, calibration, metric dictionary, meaningful effect margins and all comparator exclusions before opening confirmatory tests. Match initial mass/temperatures, source/ambient profile and horizon; report failed/inconclusive runs, all zones and cold exposure. Include fixed-normal/high, expert rules, physical fixes and appropriately justified identified feedback/MPC baselines. Obtain calibration/uncertainty and independent witness. Pilot starts monitor-only with qualified approval; commodity/core/grade/weight and whole-refrigerator outcomes are separate tests.

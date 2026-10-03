@@ -1,4 +1,8 @@
 import { FIRMWARE_PROFILE } from '../contracts.ts'
+import { configurationForFamily } from './configuration.ts'
+import type { ConfigurationFamily } from './configuration.ts'
+import { activeFaults } from './faults.ts'
+import { createPlant, observePlant, stepPlant } from './plant.ts'
 import { driverAccept, shield, validSafety } from '../domain.ts'
 import type { Pair, SafetyInput, Shielded } from '../domain.ts'
 
@@ -70,6 +74,20 @@ export class VirtualDevice {
     this.issuedSequence = this.issuedSequence === 0xffffffff ? 0 : this.issuedSequence + 1
     return this.issuedSequence
   }
+}
+
+export function replayFamily(family: ConfigurationFamily, durationSeconds = 120, seed = 2026): { family: ConfigurationFamily; seed: number; samples: { observation: ReturnType<typeof observePlant>; faults: ReturnType<typeof activeFaults> }[] } {
+  if (!Number.isInteger(durationSeconds) || durationSeconds < 1 || durationSeconds > 3600) throw new Error('Invalid replay duration')
+  const manifest = configurationForFamily(family, seed)
+  let plant = createPlant(manifest)
+  const samples = []
+  for (let second = 0; second < durationSeconds; second += 1) {
+    const faults = activeFaults(manifest.faults, plant.seconds)
+    const disturbance = { sourceTemperatureC: manifest.source.temperatureC, doorOpen: manifest.door.open || faults.doorOpen, defrost: manifest.defrost.active || faults.defrost, humidity: manifest.humidity.relativeHumidity, condensationRisk: manifest.condensation.wet || faults.condensationRisk }
+    plant = stepPlant(plant, [0.4, 0.4], disturbance, faults)
+    samples.push({ observation: observePlant(plant), faults })
+  }
+  return { family, seed, samples }
 }
 
 export function runSafetyVector(name: string): { reason: string; permitted: boolean; output: Pair } {

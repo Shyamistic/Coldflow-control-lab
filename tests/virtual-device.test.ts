@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { FIRMWARE_PROFILE, SIMULATION_PROFILE } from '../src/contracts.ts'
 import { VirtualDevice } from '../src/simulator/virtual-device.ts'
 
 test('virtual device accepts bounded expiring abstract requests and rejects replay or expiry', () => {
@@ -15,6 +16,17 @@ test('virtual device accepts bounded expiring abstract requests and rejects repl
   assert.equal(expired.reason, 'LEASE_INVALID_OR_EXPIRED')
 })
 
+test('virtual device uses an explicit simulation-only safety profile boundary', () => {
+  const device = new VirtualDevice('normal')
+  const accepted = device.submit({ nowMs: 1000, sequence: 1, requested: [SIMULATION_PROFILE.maximumDuty, SIMULATION_PROFILE.maximumDuty], leaseUntilMs: 60000 })
+  assert.deepEqual(accepted.applied, [SIMULATION_PROFILE.slewDuty, SIMULATION_PROFILE.slewDuty])
+  assert.equal(SIMULATION_PROFILE.maximumDuty, 0.8)
+  assert.equal(SIMULATION_PROFILE.slewDuty, 0.1)
+  assert.equal(FIRMWARE_PROFILE.maximumDuty, 0.4)
+  assert.equal(FIRMWARE_PROFILE.slewDuty, 0.05)
+  assert.equal(FIRMWARE_PROFILE.leaseMs, 30000)
+  assert.notEqual(SIMULATION_PROFILE.maximumDuty, FIRMWARE_PROFILE.maximumDuty)
+})
 test('fault matrix maps network, sensor, actuator and condensation faults to safe outputs', () => {
   const device = new VirtualDevice('fault-matrix')
   let networkLoss = false

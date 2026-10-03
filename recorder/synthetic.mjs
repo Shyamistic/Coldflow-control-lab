@@ -2,40 +2,39 @@ import { access } from 'node:fs/promises'
 import { appendRecord } from './append-only.mjs'
 import { createManifest, hashCanonical } from './manifest.mjs'
 import { classifySyntheticLabel } from '../analysis/labels.mjs'
+import { VirtualDevice } from '../src/simulator/virtual-device.ts'
 
-function temperaturesFor(manifest, second) {
-  const initial = manifest.configuration.initialTemperaturesC
-  const drift = manifest.family === 'normal.v1' ? 0 : Math.min(second, 120) * 0.008
-  return initial.map((value, index) => Number((value + drift + Math.sin((second + index + manifest.seed) / 17) * 0.002).toFixed(6)))
+export function canonicalOutput(result) {
+  return {
+    accepted: result.accepted,
+    applied: result.applied,
+    state: result.state,
+    reason: result.reason,
+    observation: result.observation,
+    actuator: result.actuator,
+    disturbance: result.disturbance,
+    faults: result.faults,
+  }
 }
 
-function sampleFor(manifest, second) {
-  const temperaturesC = temperaturesFor(manifest, second)
-  const isFault = manifest.family === 'fault-matrix.v1' && second >= 30
-  const accepted = !isFault && manifest.family !== 'capacity.v1'
-  const applied = accepted ? [0.1, 0.1] : [0, 0]
-  const reason = isFault ? 'SENSOR_OR_EVENT_ARTIFACT' : manifest.family === 'capacity.v1' ? 'SOURCE_INADEQUATE' : 'APPROVED_BOUNDED'
-  const output = {
-    accepted,
-    applied,
-    state: accepted ? 'AUTO_CORRECT' : 'SAFE_FALLBACK',
-    reason,
-    observation: { seconds: second, measuredAtMs: isFault ? (second - 3) * 1000 : second * 1000, temperaturesC, supplyC: manifest.configuration.sourceTemperatureC, returnAirC: Number((temperaturesC.reduce((sum, value) => sum + value, 0) / temperaturesC.length).toFixed(6)) },
+export function evidenceForResult(manifest, result, second) {
+  return {
+    corrected: manifest.family === 'obstructed.v1' && second >= 60 && result.accepted,
+    authoritySufficient: result.accepted,
+    stale: result.faults.sensorStale || result.faults.sensorDropout || result.faults.networkDelay,
+    insufficient: manifest.family === 'capacity.v1' || !manifest.configuration.source.proven,
+    contradictory: false,
   }
-  const evidence = {
-    corrected: manifest.family === 'obstructed.v1' && second >= 60,
-    authoritySufficient: manifest.family !== 'obstructed.v1' || second < 60,
-    stale: isFault,
-    insufficient: manifest.family === 'capacity.v1',
-  }
-  return { temperaturesC, output, evidence }
 }
 
 export function simulationRecords(manifest) {
   const records = []
+  const device = new VirtualDevice(manifest.configuration)
   for (let second = 0; second < manifest.durationSeconds; second += 1) {
-    const { output, evidence } = sampleFor(manifest, second)
     const input = { requested: [0.4, 0.4], nowMs: second * 1000, leaseUntilMs: second * 1000 + 60000, sequence: second + 1 }
+    const result = device.tick(input)
+    const output = canonicalOutput(result)
+    const evidence = evidenceForResult(manifest, result, second)
     const label = classifySyntheticLabel({ family: manifest.family, runId: manifest.runId, seed: manifest.seed, evidence })
     records.push({
       schema: 'coldflow.simulation-record.v1',
@@ -43,6 +42,7 @@ export function simulationRecords(manifest) {
       runId: manifest.runId,
       family: manifest.family,
       configHash: manifest.configHash,
+      simulatorManifestHash: manifest.simulatorManifestHash,
       manifestHash: manifest.manifestHash,
       seed: manifest.seed,
       simulatorVersion: manifest.simulatorVersion,

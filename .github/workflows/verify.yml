@@ -13,7 +13,13 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
-      - run: npm sbom --sbom-format=cyclonedx > artifacts-sbom.json
+      - run: mkdir -p artifacts
+      - run: npm sbom --sbom-format=cyclonedx > artifacts/sbom.json
+      - run: node scripts/check-sbom.mjs artifacts/sbom.json
+      - run: docker build -t coldflow-simulation:${{ github.sha }} .
+      - id: image
+        run: echo "image_id=$(docker image inspect --format '{{.Id}}' coldflow-simulation:${{ github.sha }})" >> "$GITHUB_OUTPUT"
+      - run: node scripts/write-sbom-metadata.mjs artifacts/sbom.json artifacts/sbom-metadata.json coldflow-simulation:${{ github.sha }} "${{ steps.image.outputs.image_id }}"
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - run: node --experimental-strip-types --test tests/hil.test.mjs tests/contracts.test.ts tests/domain.test.ts
@@ -22,8 +28,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: labeled-simulation-captures
-          path: artifacts/browser
+          name: simulation-evidence-${{ github.sha }}
+          path: artifacts
   firmware:
     runs-on: ubuntu-latest
     steps:

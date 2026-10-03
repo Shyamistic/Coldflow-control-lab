@@ -39,6 +39,13 @@ test('held-out evaluation reports required safety and selection metrics', async 
   assert.equal(evaluation.selection.decision, 'NO_ML_BASELINE')
 })
 
+test('held-out evaluation rejects mutable artifacts with stale hashes', async () => {
+  const { report, reportHash } = await fixture()
+  const model = trainCandidate(report, { families: ['normal.v1', 'obstructed.v1', 'capacity.v1'], seeds: [101, 202, 303, 404], reportHash })
+  const tampered = structuredClone(model)
+  tampered.folds[0].oodThreshold += 1
+  assert.throws(() => evaluateModel(tampered), /artifact hash mismatch/i)
+})
 test('advisory integration cannot provide actuator authority', () => {
   const advisory = advisoryFromModel({ label: 'CORRECTABLE', reason: 'TEST_ONLY', confidence: 0.8 })
   assert.equal(advisory.modelAdvisoryOnly, true)

@@ -15,6 +15,7 @@ export interface AbstractActuatorRequest {
   leaseUntilMs: number
   operatorApproved?: boolean
   measuredAtMs?: number
+  interlockClosed?: boolean
 }
 
 export interface VirtualDeviceStep extends Partial<SafetyInput> {
@@ -106,14 +107,15 @@ export class VirtualDevice {
     const context = faults.doorOpen ? 'DOOR_OPEN' : faults.defrost ? 'DEFROST' : 'NORMAL'
     const measuredAtMs = faults.sensorStale || faults.networkDelay ? request.nowMs - 2001 : request.measuredAtMs ?? observation.measuredAtMs
     const temperatures = faults.sensorDropout ? [Number.NaN, ...observation.temperaturesC.slice(1), observation.supplyC, observation.returnAirC] : [...observation.temperaturesC, observation.supplyC, observation.returnAirC]
-    const safety = shield(validSafety({ nowMs: request.nowMs, context, temperatures, measuredAtMs, operatorApproved: request.operatorApproved ?? true, leaseUntilMs: request.leaseUntilMs, actuatorHealthy: !faults.actuatorNoFeedback && !faults.actuatorStuck, sourceProven: this.manifest.source.proven, wet: disturbance.condensationRisk, surfaceMinimum: observation.surfaceMinimumC, dewPoint: observation.dewPointC, requested: request.requested, previous: this.previous, sequence: request.sequence, lastSequence: this.lastSequence }))
+    const safety = shield(validSafety({ nowMs: request.nowMs, context, temperatures, measuredAtMs, operatorApproved: request.operatorApproved ?? true, interlockClosed: request.interlockClosed ?? true, leaseUntilMs: request.leaseUntilMs, actuatorHealthy: !faults.actuatorNoFeedback && !faults.actuatorStuck, sourceProven: this.manifest.source.proven, wet: disturbance.condensationRisk, surfaceMinimum: observation.surfaceMinimumC, dewPoint: observation.dewPointC, requested: request.requested, previous: this.previous, sequence: request.sequence, lastSequence: this.lastSequence }))
     const networkLost = faults.networkLoss
     const applied = networkLost ? [0, 0] as Pair : driverAccept(safety, request.nowMs, this.lastSequence)
     const accepted = !networkLost && safety.permitted && applied.every(value => Number.isFinite(value) && value >= 0)
     if (accepted) { this.previous = applied; this.lastSequence = request.sequence }
     this.output = applied
     const activeFault = faults.active[0]
-    return { accepted, applied, state: accepted ? 'AUTO_CORRECT' : activeFault?.safeState ?? 'SAFE_FALLBACK', reason: networkLost ? 'NETWORK_LOSS' : safety.reason, observation, actuator: { requested: request.requested, applied, feedbackHealthy: !faults.actuatorNoFeedback && !faults.actuatorStuck, powerW: applied.reduce((sum, value) => sum + 8 * value ** 3, 0) }, disturbance, faults }
+    const state = accepted ? 'AUTO_CORRECT' : activeFault?.safeState ?? (!this.manifest.source.proven ? 'INVESTIGATE_EQUIPMENT' : 'SAFE_FALLBACK')
+    return { accepted, applied, state, reason: networkLost ? 'NETWORK_LOSS' : safety.reason, observation, actuator: { requested: request.requested, applied, feedbackHealthy: !faults.actuatorNoFeedback && !faults.actuatorStuck, powerW: applied.reduce((sum, value) => sum + 8 * value ** 3, 0) }, disturbance, faults }
   }
 
   tick(request: AbstractActuatorRequest, seconds = 1): LegacyVirtualDeviceResult {

@@ -1,7 +1,10 @@
 import { authorityFromPulseBlocks, independentPulseBlocks } from './control.mjs'
 import { COMPARATORS, evaluateComparator } from './baseline.mjs'
-import { detectOOD, safeAbstention } from './constraints.mjs'
+import { detectOOD } from './constraints.mjs'
 import { classifySyntheticLabel } from './labels.mjs'
+import { configurationForFamily } from '../src/simulator/configuration.ts'
+import { createFaultEvent } from '../src/simulator/faults.ts'
+import { VirtualDevice } from '../src/simulator/virtual-device.ts'
 
 export const EVALUATION_SCHEMA = 'coldflow.simulation-evaluation.v1'
 const FAULT_CASES = [
@@ -18,13 +21,35 @@ const FAULT_CASES = [
   ['NETWORK_LOSS', 'SAFE_FALLBACK', 'NETWORK_LOSS'],
 ]
 
+const DEVICE_FAULTS = new Set(['DOOR_OPEN', 'DEFROST', 'SENSOR_STALE', 'SENSOR_DROPOUT', 'CONDENSATION_RISK', 'ACTUATOR_NO_FEEDBACK', 'ACTUATOR_STUCK', 'NETWORK_DELAY', 'NETWORK_LOSS'])
+
 function parseList(value, fallback) {
   return value ? value.split(',').map(item => item.trim()).filter(Boolean) : fallback
 }
 
-function caseForFault(name, expectedState, reason) {
-  const abstention = safeAbstention({ fault: name })
-  return { fault: name, expectedSafeState: expectedState, expectedReason: reason, resolved: Boolean(expectedState && reason), observedDecision: abstention.decision, observedOutput: abstention.safeOutput, inconclusive: false, modelAdvisoryOnly: abstention.modelAdvisoryOnly }
+function caseForFault(name, expectedState, expectedReason) {
+  const base = configurationForFamily('fault-matrix', 2026)
+  const manifest = name === 'SOURCE_INADEQUATE'
+    ? { ...base, source: { ...base.source, proven: false } }
+    : DEVICE_FAULTS.has(name)
+      ? { ...base, faults: [createFaultEvent(name, 0, 1)] }
+      : base
+  const device = new VirtualDevice(manifest)
+  const observed = device.submit({ nowMs: 1000, sequence: 1, requested: [0.4, 0.4], leaseUntilMs: 60000, interlockClosed: name !== 'INTERLOCK_OPEN' })
+  const zeroOutput = observed.applied.every(value => value === 0)
+  const resolved = observed.state === expectedState && observed.reason === expectedReason && zeroOutput
+  return {
+    fault: name,
+    expectedSafeState: expectedState,
+    expectedReason,
+    resolved,
+    observedState: observed.state,
+    observedReason: observed.reason,
+    observedOutput: observed.applied,
+    zeroOutput,
+    inconclusive: false,
+    modelAdvisoryOnly: true,
+  }
 }
 
 export function evaluateSimulation({ families = ['normal.v1', 'obstructed.v1', 'capacity.v1'], seeds = [101, 202, 303, 404], durationSeconds = 30 } = {}) {
@@ -36,7 +61,7 @@ export function evaluateSimulation({ families = ['normal.v1', 'obstructed.v1', '
       const blocks = independentPulseBlocks({ family, runId, seed, count: 3 })
       const authority = authorityFromPulseBlocks(blocks)
       const comparators = COMPARATORS.map(method => evaluateComparator({ family, seed, method, blocks, durationSeconds }))
-      const label = classifySyntheticLabel({ family, runId, seed, evidence: { corrected: family === 'obstructed.v1' ? false : family === 'normal.v1', authoritySufficient: true } })
+      const label = classifySyntheticLabel({ family, runId, seed, evidence: { corrected: false, authoritySufficient: true } })
       groups.push({ groupId: `${family}:${runId}:${seed}`, family, runId, seed, pulseBlocks: blocks.map(block => ({ id: block.independentBlockId, startSecond: block.startSecond, endSecond: block.endSecond, stableWindow: block.stableWindow, noFutureLeakage: block.noFutureLeakage })), authority, comparators, label })
       for (const comparator of comparators) cases.push({ groupId: `${family}:${runId}:${seed}`, method: comparator.method, family, seed, metrics: comparator.metrics, constraints: comparator.constraints, ood: comparator.ood, abstention: comparator.abstention })
     }

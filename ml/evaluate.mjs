@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
-import { FEATURE_NAMES, vectorFromFeatures } from './features.mjs'
+import { FEATURE_NAMES, sha256, vectorFromFeatures } from './features.mjs'
 import { FIXED_GENERATED_AT, MODEL_SCHEMA, renderModelCard } from './train.mjs'
 
 export const EVALUATION_SCHEMA = 'coldflow.advisory-evaluation.v1'
@@ -66,6 +66,13 @@ function calibration(rows) {
   return { bins, expectedCalibrationError: Number(expectedCalibrationError.toFixed(6)) }
 }
 
+function actionableUtility(rows) {
+  const actionable = rows.filter(row => row.actual !== 'ABSTAIN')
+  const correct = actionable.filter(row => row.predicted === row.actual).length
+  const incorrect = actionable.filter(row => row.predicted !== row.actual && row.predicted !== 'ABSTAIN').length
+  return correct - incorrect
+}
+
 function metricFor(rows, model) {
   const total = rows.length
   const correct = rows.filter(row => row.predicted === row.actual).length
@@ -75,7 +82,7 @@ function metricFor(rows, model) {
   const bySeed = Object.groupBy(rows, row => String(row.seed))
   const seedAccuracy = Object.fromEntries(Object.entries(bySeed).sort(([left], [right]) => left.localeCompare(right)).map(([seed, seedRows]) => [seed, Number((seedRows.filter(row => row.predicted === row.actual).length / seedRows.length).toFixed(6))]))
   const values = Object.values(seedAccuracy)
-  const utility = Number(((correct - falseCorrectableRows.length * 2) / Math.max(total, 1)).toFixed(6))
+  const utility = Number(((actionableUtility(rows) - falseCorrectableRows.length * 2) / Math.max(total, 1)).toFixed(6))
   const inDistribution = rows.filter(row => !row.isOOD)
   const syntheticOOD = model.folds.map(fold => predictFold(fold, { values: [22, 18, 12, 1] }))
   return {
@@ -97,6 +104,8 @@ function metricFor(rows, model) {
 
 export function evaluateModel(model) {
   if (model?.schema !== MODEL_SCHEMA || model.safety?.directActuatorWrite !== false || model.safety?.advisoryOnly !== true) throw new Error('Invalid or actuator-authoritative model artifact')
+  const { artifactHash, ...unsignedArtifact } = model
+  if (!artifactHash || sha256(unsignedArtifact) !== artifactHash) throw new Error('Model artifact hash mismatch')
   const rows = []
   const foldResults = []
   for (const fold of model.folds) {

@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { configurationForFamily } from '../src/simulator/configuration.ts'
 
 export const RECORD_SCHEMA = 'coldflow.simulation-record.v1'
 export const MANIFEST_SCHEMA = 'coldflow.simulation-manifest.v1'
@@ -25,22 +26,19 @@ export function normalizeFamily(value = 'normal.v1') {
   return family
 }
 
-function configurationForFamily(family, seed) {
-  const common = { seed, version: 'cf-sim-config-v1', integration: '1s-euler', zones: 6 }
-  const configurations = {
-    'normal.v1': { initialTemperaturesC: [6.5, 6.7, 6.8, 6.4, 6.6, 6.7], sourceTemperatureC: 3.5, faultProfile: 'NONE', declaredRule: 'NO_EXCURSION_ABSTAIN' },
-    'obstructed.v1': { initialTemperaturesC: [10.5, 8.9, 7.4, 6.6, 7.1, 8.5], sourceTemperatureC: 3.5, faultProfile: 'AIRFLOW_OBSTRUCTION', declaredRule: 'OBSTRUCTION_RESTACK_OR_CORRECT' },
-    'capacity.v1': { initialTemperaturesC: [10.5, 8.9, 7.4, 6.6, 7.1, 8.5], sourceTemperatureC: 9.4, faultProfile: 'INADEQUATE_SOURCE', declaredRule: 'SOURCE_CAPACITY_FAULT' },
-    'fault-matrix.v1': { initialTemperaturesC: [10.5, 8.9, 7.4, 6.6, 7.1, 8.5], sourceTemperatureC: 3.5, faultProfile: 'SENSOR_ACTUATOR_EVENTS', declaredRule: 'SENSOR_OR_EVENT_ARTIFACT' },
-  }
-  return { ...common, ...configurations[family] }
+function canonicalFamilyForSimulator(family) {
+  return family.replace('.v1', '')
+}
+
+function configurationForFamilyManifest(family, seed) {
+  return configurationForFamily(canonicalFamilyForSimulator(family), seed)
 }
 
 export function createManifest({ family = 'normal.v1', seed = 2026, durationSeconds = 120 } = {}) {
   const canonicalFamily = normalizeFamily(family)
   if (!Number.isInteger(seed) || seed < 1) throw new Error('Invalid simulator seed')
   if (!Number.isInteger(durationSeconds) || durationSeconds < 1 || durationSeconds > 3600) throw new Error('Invalid simulation duration')
-  const configuration = configurationForFamily(canonicalFamily, seed)
+  const configuration = configurationForFamilyManifest(canonicalFamily, seed)
   const configHash = hashCanonical(configuration)
   const base = {
     schema: MANIFEST_SCHEMA,
@@ -50,6 +48,7 @@ export function createManifest({ family = 'normal.v1', seed = 2026, durationSeco
     seed,
     durationSeconds,
     configHash,
+    simulatorManifestHash: configuration.manifestHash,
     simulatorVersion: SIMULATOR_VERSION,
     contractVersion: CONTRACT_VERSION,
     modelVersion: MODEL_VERSION,
@@ -73,6 +72,8 @@ export function assertManifest(manifest) {
   const { manifestHash, ...base } = manifest
   if (hashCanonical(base) !== manifestHash) throw new Error('Manifest hash mismatch')
   if (hashCanonical(manifest.configuration) !== manifest.configHash) throw new Error('Configuration hash mismatch')
+  const expectedConfiguration = configurationForFamilyManifest(manifest.family, manifest.seed)
+  if (canonicalJson(expectedConfiguration) !== canonicalJson(manifest.configuration) || manifest.simulatorManifestHash !== expectedConfiguration.manifestHash) throw new Error('Canonical simulator manifest mismatch')
   normalizeFamily(manifest.family)
   return manifest
 }

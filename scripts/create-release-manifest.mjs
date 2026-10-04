@@ -121,7 +121,7 @@ export function validateReleaseManifest(manifest, { outputPath = null } = {}) {
     const deployment = evidence.deployment
     if (!deployment || typeof deployment !== 'object') errors.push('evidence.deployment is required')
     else {
-      knownKeys(deployment, ['service', 'region', 'revision', 'imageReference', 'imageDigest', 'sourceRevision', 'sourceRevisionLabel', 'describe', 'verifiedAt', 'routes'], 'evidence.deployment', errors)
+      knownKeys(deployment, ['schema', 'service', 'region', 'revision', 'imageReference', 'imageDigest', 'sourceRevision', 'sourceRevisionLabel', 'describe', 'verifiedAt', 'routes'], 'evidence.deployment', errors)
       knownKeys(deployment.routes, ROUTES, 'evidence.deployment.routes', errors)
       for (const [name, value] of [['service', deployment.service], ['region', deployment.region], ['revision', deployment.revision], ['imageReference', deployment.imageReference]]) if (typeof value !== 'string' || !value || /placeholder|project[_-]?id|unresolved|local/i.test(value)) errors.push(`deployment.${name} must be resolved`)
       if (!DIGEST.test(deployment.imageDigest ?? '')) errors.push('deployment.imageDigest must be an immutable sha256 digest')

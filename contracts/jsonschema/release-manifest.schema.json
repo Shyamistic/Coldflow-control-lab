@@ -107,8 +107,9 @@
         "deployment": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["service", "region", "revision", "imageReference", "imageDigest", "sourceRevision", "sourceRevisionLabel", "describe", "verifiedAt", "routes"],
+          "required": ["schema", "service", "region", "revision", "imageReference", "imageDigest", "sourceRevision", "sourceRevisionLabel", "describe", "verifiedAt", "routes"],
           "properties": {
+            "schema": { "const": "coldflow.deployment-verification.v1" },
             "service": { "type": "string", "minLength": 1 },
             "region": { "type": "string", "minLength": 1 },
             "revision": { "type": "string", "minLength": 1 },

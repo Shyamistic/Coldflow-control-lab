@@ -11,7 +11,7 @@ spec:
       annotations:
         run.googleapis.com/ingress: all
       labels:
-        coldflow/source-revision: SOURCE_REVISION
+        source-revision: SOURCE_REVISION
     spec:
       containerConcurrency: 40
       containers:

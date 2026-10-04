@@ -19,6 +19,7 @@ const nodeTests = [
   'tests/api.test.mjs',
   'tests/public-experiment.test.ts',
   'tests/release-evidence.test.mjs',
+  'tests/deployment-verification.test.mjs',
 ]
 
 const node = process.platform === 'win32' ? 'node' : process.execPath

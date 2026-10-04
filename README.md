@@ -16,6 +16,47 @@ See [docs/provenance.md](docs/provenance.md) for evidence rules and [docs/tracea
 
 - [Deployed simulation dashboard](https://coldflow-demo-749096933589.asia-south1.run.app)
 - [Source repository](https://github.com/Shyamistic/Coldflow-control-lab)
+- [Architecture and data flow](docs/architecture.md)
+
+## Architecture at a glance
+
+```text
+React + Three.js dashboard
+          │
+          ├── browser-safe canonical adapter
+          └── Express simulation API
+                    │
+        versioned configuration + seed
+                    │
+     six-zone reduced-order plant model
+                    │
+              VirtualDevice
+                    │
+ deterministic safety shield + fault policy
+                    │
+     SIMULATED telemetry / hashes / labels
+                    │
+       recorder, replay, evaluation, ML
+
+Separate boundary: portable C++ safety/HAL scaffold
+                 (fail-closed, pins disabled)
+
+Cloud Run hosts the stateless simulation service only.
+```
+
+The complete component map, data flow, safety boundary, and future qualified hardware boundary are documented in [docs/architecture.md](docs/architecture.md). The dashboard and API use the same versioned `VERSIONED_PLANT_VIRTUAL_DEVICE` experiment path; the older domain facade remains compatibility-only and is not evidence-producing control logic.
+
+## Submission demonstration flow
+
+For a short reviewer walkthrough, use this sequence:
+
+1. Open the deployed dashboard and point out the persistent `SIMULATION ONLY` and `HARDWARE CONNECTED: NO` boundary.
+2. Select **Correctable synthetic**, approve the simulated lease, and play the six-zone concept view to show a bounded synthetic correction with manifest/configuration/output/replay hashes.
+3. Open **Experiments** and run the comparator pack. Highlight the normal `NO_EXCURSION` no-action result, the synthetic `CORRECTABLE` result, and the obstruction/capacity/fault `ABSTAIN` or inspection results.
+4. Open **Model & boundaries** to show the air-only equations, authority table, OEM boundary, and explicit limitations.
+5. Export the labelled CSV/PNG/WebM only as simulation media. Do not present synthetic labels as physical ground truth.
+
+The proposed hardware image, deployed-dashboard screenshots, architecture figure, pitch deck, and final video are intentionally maintained as a later submission-media phase. When added, store only reviewed, simulation/proposed-labelled assets under a public-safe media directory; keep private research, raw recordings, credentials, and unreviewed materials outside the repository.
 
 ## Run and demonstrate
 
@@ -60,7 +101,7 @@ Native g++ and PlatformIO checks are additional CI/toolchain gates when those to
 
 ## Release evidence and deployment verification
 
-A release is not complete until source revision, package-lock hash, passed command results, evaluation report, advisory model decision/artifact, replay JSONL/report/trusted anchor, SBOM/license result, immutable image digest, and deployment checks are bound in the ignored `artifacts/release/release-manifest.json`. Generate it only after replacing all placeholders with resolved values; the manifest cannot contain itself and is reproducibility evidence, not a signature or physical chain of custody. The deployment checks must cover `/api/live`, `/api/ready`, `/api/health`, `/api/metrics`, and `/api/experiments`. `/api/ready` must continue to report `hardwareConnected: false`, no physical gates, and no actuator authority. `/api` has no physical command route.
+A release is not complete until source revision, package-lock hash, passed command results, evaluation report, advisory model decision/artifact, replay JSONL/report/trusted anchor, SBOM/license result, immutable image digest, and an identity-bound deployment verification are bound in the ignored `artifacts/release/release-manifest.json`. Capture `gcloud run services describe SERVICE --region REGION --format=json` output and run `scripts/verify-cloud-run-deployment.mjs` before manifest creation; it rejects mismatched service, region, 100%-traffic revision, digest-pinned image, source-revision label, or route revision. The manifest cannot contain itself and is reproducibility evidence, not a signature or physical chain of custody. The deployment checks must cover `/api/live`, `/api/ready`, `/api/health`, `/api/metrics`, and `/api/experiments`. `/api/ready` must continue to report `hardwareConnected: false`, no physical gates, and no actuator authority. `/api` has no physical command route.
 
 Generated evaluation, replay, SBOM, browser, Docker, and release-manifest files are local/CI evidence and remain outside source control. Do not publish credentials, private research, raw customer data, generated binaries, or ignored artifacts.
 

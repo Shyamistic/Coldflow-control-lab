@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { readFile, mkdir, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
+import { validateDeploymentVerification } from './verify-cloud-run-deployment.mjs'
 
 export const RELEASE_MANIFEST_SCHEMA = 'coldflow.release-manifest.v1'
 export const RELEASE_SCHEMA_VERSION = '1.0'
@@ -120,15 +121,26 @@ export function validateReleaseManifest(manifest, { outputPath = null } = {}) {
     const deployment = evidence.deployment
     if (!deployment || typeof deployment !== 'object') errors.push('evidence.deployment is required')
     else {
-      knownKeys(deployment, ['service', 'revision', 'verifiedAt', 'routes'], 'evidence.deployment', errors)
+      knownKeys(deployment, ['service', 'region', 'revision', 'imageReference', 'imageDigest', 'sourceRevision', 'sourceRevisionLabel', 'describe', 'verifiedAt', 'routes'], 'evidence.deployment', errors)
       knownKeys(deployment.routes, ROUTES, 'evidence.deployment.routes', errors)
-      for (const [name, value] of [['service', deployment.service], ['revision', deployment.revision]]) if (typeof value !== 'string' || !value || /placeholder|region|project[_-]?id|unresolved|local/i.test(value)) errors.push(`deployment.${name} must be resolved`)
+      for (const [name, value] of [['service', deployment.service], ['region', deployment.region], ['revision', deployment.revision], ['imageReference', deployment.imageReference]]) if (typeof value !== 'string' || !value || /placeholder|project[_-]?id|unresolved|local/i.test(value)) errors.push(`deployment.${name} must be resolved`)
+      if (!DIGEST.test(deployment.imageDigest ?? '')) errors.push('deployment.imageDigest must be an immutable sha256 digest')
+      if (deployment.imageDigest !== image?.digest) errors.push('deployment image digest does not match image digest')
+      try { commit(deployment.sourceRevision, 'deployment.sourceRevision') } catch (error) { errors.push(error.message) }
+      if (deployment.sourceRevision !== source?.commit) errors.push('deployment source revision does not match source commit')
+      if (!deployment.sourceRevisionLabel || typeof deployment.sourceRevisionLabel !== 'object' || typeof deployment.sourceRevisionLabel.key !== 'string' || typeof deployment.sourceRevisionLabel.location !== 'string') errors.push('deployment.sourceRevisionLabel must identify the resolved source metadata')
+      knownKeys(deployment.sourceRevisionLabel, ['key', 'location'], 'evidence.deployment.sourceRevisionLabel', errors)
+      knownKeys(deployment.describe, ['path', 'sha256'], 'evidence.deployment.describe', errors)
+      fileEvidence(deployment.describe, 'evidence.deployment.describe', errors)
       try { date(deployment.verifiedAt, 'deployment.verifiedAt') } catch (error) { errors.push(error.message) }
       for (const route of ROUTES) {
         const check = deployment.routes?.[route]
-        knownKeys(check, ['status', 'statusCode', 'verifiedAt'], `evidence.deployment.routes.${route}`, errors)
+        knownKeys(check, ['status', 'statusCode', 'revision', 'verifiedAt', 'url'], `evidence.deployment.routes.${route}`, errors)
         if (!check || check.status !== 'passed' || !Number.isInteger(check.statusCode) || check.statusCode < 200 || check.statusCode > 299) errors.push(`deployment.routes.${route} must be a passed 2xx check`)
-        else try { date(check.verifiedAt, `deployment.routes.${route}.verifiedAt`) } catch (error) { errors.push(error.message) }
+        else {
+          if (check.revision !== deployment.revision) errors.push(`deployment.routes.${route}.revision must match deployed revision`)
+          try { date(check.verifiedAt, `deployment.routes.${route}.verifiedAt`) } catch (error) { errors.push(error.message) }
+        }
       }
     }
   }
@@ -194,10 +206,17 @@ export async function main(argv = process.argv.slice(2)) {
   const licenseResult = await json(licenseResultPath)
   if (licenseResult.checked !== true) throw new Error('SBOM license result is not a passing checked result')
   const model = await json(flags['model-artifact'] ?? 'artifacts/ml/candidate.json')
-  const routes = await json(flags['deployment-checks'] ?? 'artifacts/release/deployment-checks.json')
-  const imageSourceRevision = flags['image-source-commit']
-  if (!imageSourceRevision) throw new Error('--image-source-commit is required to bind image provenance')
-  ensureCommitExists(imageSourceRevision)
+  const deploymentVerificationPath = flags['deployment-verification'] ?? flags['deployment-checks'] ?? 'artifacts/release/deployment-checks.json'
+  const deploymentVerification = await json(deploymentVerificationPath)
+  const imageSourceRevision = flags['image-source-commit'] ?? sourceRevision
+  if (imageSourceRevision !== sourceRevision) throw new Error('--image-source-commit must match --source-commit')
+  const imageDigest = flags['image-digest']
+  if (!imageDigest) throw new Error('--image-digest is required to bind the built image')
+  const cloudRunService = flags['cloud-run-service']
+  const cloudRunRegion = flags['cloud-run-region']
+  if (!cloudRunService || !cloudRunRegion) throw new Error('--cloud-run-service and --cloud-run-region are required')
+  const deploymentCheck = validateDeploymentVerification(deploymentVerification, { service: cloudRunService, region: cloudRunRegion, sourceRevision, imageDigest, revision: flags['cloud-run-revision'] })
+  if (!deploymentCheck.valid) throw new Error(`Invalid deployment verification: ${deploymentCheck.errors.join('; ')}`)
   const manifest = createReleaseManifest({
     sourceRevision,
     packageLockHash: await hashFile(flags['package-lock'] ?? 'package-lock.json'),
@@ -207,13 +226,13 @@ export async function main(argv = process.argv.slice(2)) {
       ml: { decision: await evidence(flags['model-decision'] ?? 'ml/decision-record.json'), artifact: { ...(await evidence(flags['model-artifact'] ?? 'artifacts/ml/candidate.json')), artifactHash: model.artifactHash } },
       replay: { manifest: await evidence(flags['replay-manifest'] ?? 'artifacts/simulation/run.jsonl'), report: await evidence(flags['replay-report'] ?? 'artifacts/simulation/replay-report.json'), trustedAnchor: await evidence(flags['trusted-anchor'] ?? 'artifacts/simulation/run.jsonl.anchor.json') },
       sbom: { ...(await evidence(flags.sbom ?? 'artifacts/sbom.json')), serialNumber: sbom.serialNumber, componentCount: sbom.components?.length ?? 0, license: { status: 'passed', resultPath: licenseResultPath, resultHash: await hashFile(licenseResultPath) } },
-      image: { reference: flags['image-reference'] ?? '', digest: flags['image-digest'], sourceRevision: imageSourceRevision },
-      deployment: { service: flags['cloud-run-service'], revision: flags['cloud-run-revision'], verifiedAt: flags['deployment-verified-at'] ?? new Date().toISOString(), routes },
+      image: { reference: flags['image-reference'] ?? deploymentVerification.imageReference, digest: imageDigest, sourceRevision: imageSourceRevision },
+      deployment: deploymentVerification,
     },
   }, { outputPath: output })
   await mkdir(dirname(resolve(output)), { recursive: true })
   await writeFile(resolve(output), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
-  console.log(JSON.stringify({ output, sourceRevision, imageDigest: manifest.evidence.image.digest, schema: manifest.schema }))
+  console.log(JSON.stringify({ output, sourceRevision, imageDigest: manifest.evidence.image.digest, deployedRevision: manifest.evidence.deployment.revision, service: manifest.evidence.deployment.service, region: manifest.evidence.deployment.region, schema: manifest.schema }))
   return manifest
 }
 

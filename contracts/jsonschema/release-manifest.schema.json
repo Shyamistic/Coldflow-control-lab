@@ -107,10 +107,21 @@
         "deployment": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["service", "revision", "verifiedAt", "routes"],
+          "required": ["service", "region", "revision", "imageReference", "imageDigest", "sourceRevision", "sourceRevisionLabel", "describe", "verifiedAt", "routes"],
           "properties": {
             "service": { "type": "string", "minLength": 1 },
+            "region": { "type": "string", "minLength": 1 },
             "revision": { "type": "string", "minLength": 1 },
+            "imageReference": { "type": "string", "minLength": 1 },
+            "imageDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+            "sourceRevision": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+            "sourceRevisionLabel": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["key", "location"],
+              "properties": { "key": { "type": "string", "minLength": 1 }, "location": { "type": "string", "minLength": 1 } }
+            },
+            "describe": { "$ref": "#/$defs/fileEvidence" },
             "verifiedAt": { "type": "string", "format": "date-time" },
             "routes": {
               "type": "object",
@@ -151,11 +162,13 @@
     "routeCheck": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "statusCode", "verifiedAt"],
+      "required": ["status", "statusCode", "revision", "verifiedAt"],
       "properties": {
         "status": { "const": "passed" },
         "statusCode": { "type": "integer", "minimum": 200, "maximum": 299 },
-        "verifiedAt": { "type": "string", "format": "date-time" }
+        "revision": { "type": "string", "minLength": 1 },
+        "verifiedAt": { "type": "string", "format": "date-time" },
+        "url": { "type": "string", "format": "uri" }
       }
     }
   }

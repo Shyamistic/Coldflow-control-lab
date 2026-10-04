@@ -18,6 +18,25 @@ node scripts/check-sbom.mjs artifacts/sbom.json docs/license-allowlist.json arti
 
 ## External release evidence
 
+The release manifest is deliberately generated only after the source commit, immutable image, deployment revision and all evidence exist. Capture the exact Cloud Run service description and verify it against the reviewed commit and built digest before generating the manifest. The verifier requires every route result to identify the same 100% traffic revision:
+
+```sh
+gcloud run services describe coldflow-simulation \
+  --region asia-south1 \
+  --format=json > artifacts/release/cloud-run-describe.json
+node scripts/verify-cloud-run-deployment.mjs \
+  --describe artifacts/release/cloud-run-describe.json \
+  --routes artifacts/release/routes.json \
+  --service coldflow-simulation \
+  --region asia-south1 \
+  --source-commit COMMIT \
+  --image-digest sha256:DIGEST \
+  --output artifacts/release/deployment-checks.json
+```
+
+The `routes.json` checks must contain `status`, a 2xx `statusCode`, `verifiedAt`, and the Cloud Run revision observed for each route. The verifier refuses to write checks if the service name, 100% traffic revision, digest-pinned image, or `coldflow/source-revision` label/metadata differs from the reviewed inputs. Its output binds the exact describe-output hash, service, region, revision, deployed digest, source label location, and route identities.
+
+
 The release manifest is deliberately generated only after the source commit, immutable image, deployment revision and all evidence exist. It is written under ignored `artifacts/` and contains no self-hash. The command-results input records passed `npm test`, lint, build, evaluation, replay, SBOM and Docker commands; the other inputs bind the raw hashes for evaluation, ML decision/candidate, replay JSONL/report/trusted anchor, SBOM/license result, image digest and Cloud Run route checks.
 
 ```sh
@@ -35,8 +54,8 @@ node scripts/create-release-manifest.mjs \
   --image-digest sha256:DIGEST \
   --image-source-commit COMMIT \
   --cloud-run-service coldflow-simulation \
-  --cloud-run-revision REVISION \
-  --deployment-checks artifacts/release/deployment-checks.json
+  --cloud-run-region asia-south1 \
+  --deployment-verification artifacts/release/deployment-checks.json
 ```
 
-`COMMIT`, `DIGEST`, `REVISION`, deployment routes and timestamps must be real resolved values; `local`, `unbuilt`, placeholders and unresolved identities are rejected. This manifest is reproducibility evidence for the software simulation only. Native C++ and PlatformIO results remain CI/toolchain-only, and no generated evidence or manifest claims assembled hardware or physical readiness.
+`COMMIT`, `DIGEST`, the Cloud Run describe output, source label, 100% traffic `REVISION`, deployment routes and timestamps must be real resolved values; `local`, `unbuilt`, placeholders and unresolved identities are rejected. This manifest is reproducibility evidence for the software simulation only. Native C++ and PlatformIO results remain CI/toolchain-only, and no generated evidence or manifest claims assembled hardware or physical readiness.

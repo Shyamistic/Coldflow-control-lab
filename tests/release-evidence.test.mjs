@@ -22,7 +22,7 @@ function validManifest(overrides = {}) {
       replay: { manifest: file('artifacts/simulation/run.jsonl'), report: file('artifacts/simulation/replay-report.json'), trustedAnchor: file('artifacts/simulation/run.jsonl.anchor.json') },
       sbom: { ...file('artifacts/sbom.json'), serialNumber: 'urn:uuid:test', componentCount: 3, license: { status: 'passed', resultPath: 'artifacts/sbom-check.json', resultHash: hash } },
       image: { reference: 'us-docker.pkg.dev/demo/coldflow@sha256:' + 'c'.repeat(64), digest: 'sha256:' + 'c'.repeat(64), sourceRevision: commit },
-      deployment: { service: 'coldflow-simulation', revision: 'coldflow-simulation-00001-abc', verifiedAt: timestamp, routes: Object.fromEntries(['live', 'ready', 'health', 'metrics', 'experiments'].map(route => [route, { status: 'passed', statusCode: 200, verifiedAt: timestamp }])) },
+      deployment: { service: 'coldflow-simulation', region: 'asia-south1', revision: 'coldflow-simulation-00001-abc', imageReference: 'us-docker.pkg.dev/demo/coldflow@sha256:' + 'c'.repeat(64), imageDigest: 'sha256:' + 'c'.repeat(64), sourceRevision: commit, sourceRevisionLabel: { key: 'coldflow/source-revision', location: 'spec.template.metadata.labels' }, describe: file('artifacts/release/cloud-run-describe.json'), verifiedAt: timestamp, routes: Object.fromEntries(['live', 'ready', 'health', 'metrics', 'experiments'].map(route => [route, { status: 'passed', statusCode: 200, revision: 'coldflow-simulation-00001-abc', verifiedAt: timestamp }])) },
     },
   })
   const merged = { ...manifest, ...overrides, source: { ...manifest.source, ...(overrides.source ?? {}) }, evidence: { ...manifest.evidence, ...(overrides.evidence ?? {}) } }
@@ -56,7 +56,19 @@ test('release evidence rejects missing hashes and failed license results', () =>
   assert.match(result.errors.join('\n'), /trusted|license|hash/i)
 })
 
-test('release evidence rejects circular/self-referential and mismatched source evidence', () => {
+test('release evidence rejects an image or route identity that is not bound to the deployed revision', () => {
+  const imageMismatch = validManifest()
+  imageMismatch.evidence.deployment.imageDigest = 'sha256:' + 'd'.repeat(64)
+  assert.throws(() => assertReleaseManifest(imageMismatch), /deployment image digest does not match image digest/i)
+  const routeMismatch = validManifest()
+  routeMismatch.evidence.deployment.routes.live.revision = 'coldflow-simulation-00002-def'
+  assert.throws(() => assertReleaseManifest(routeMismatch), /revision must match deployed revision/i)
+  const sourceMismatch = validManifest()
+  sourceMismatch.evidence.deployment.sourceRevision = 'd'.repeat(40)
+  assert.throws(() => assertReleaseManifest(sourceMismatch), /deployment source revision does not match source commit/i)
+})
+
+test('release evidence rejects self hashes, mismatched image source, and self inclusion', () => {
   const manifest = validManifest()
   manifest.manifestHash = hash
   assert.throws(() => assertReleaseManifest(manifest), /self hash/i)
